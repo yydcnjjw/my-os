@@ -1,0 +1,9 @@
+/.ccls-cache/
+/back/
+/.obj/
+
+
+bx_enh_dbg.ini
+/compile_commands.json
+/.projectile
+/serial.txt
