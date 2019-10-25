@@ -63,34 +63,17 @@ struct pt_regs {
     /* top of stack page */
 };
 
-static void print_num(int num) {
-#define BITS 4    
-    int bits = BITS - 1;    
-    char s_vector_num[BITS] = {};
-    int n;
-    while (bits >= 0 || num != 0) {
-        n = num % 10;
-        s_vector_num[bits] = n + '0';
-        num = num / 10;
-        bits--;
-    }
-    for (int i = 0; i < BITS; i++) {
-        early_serial_putc(s_vector_num[i]);
-    }    
-}
 
 static void print_idt(int vector_num) {
-    early_serial_write("idt handler:\n\tvector num: ");
-    print_num(vector_num);
-    early_serial_putc('\n');
+    printk("idt handler:\n");
+    printk("\tvector num: %d\n", vector_num);
 }
 
 extern void early_fixup_exception(struct pt_regs *regs, int trapnr) {
     if (trapnr < 256) {
         print_idt(trapnr);
     } else {
-        early_serial_write("vector num must < 256: ");
-        print_num(trapnr);
-        early_serial_write("\n");
+        printk("regs %p\n", regs);
+        printk("vector num must < 256: %d", trapnr);
     }
 }

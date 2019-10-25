@@ -67,7 +67,7 @@ static void io_serial_out(unsigned long addr, int offset, int value) {
     outb(value, addr + offset);
 }
 
-extern void early_serial_init() {
+void early_serial_init() {
     io_serial_out(SERIAL_BASE, IER, 0); /* Disable all interrupts */
 
     io_serial_out(SERIAL_BASE, LCR,
@@ -105,14 +105,3 @@ void early_serial_write(const char *s) {
         early_serial_putc(c);
     }
 }
-
-unsigned int strlen(const char *s) {
-    int n = 0;
-    char c;
-    while ((c = *s++) != '\0') {
-        n++;
-    }
-    return n;
-}
-
-extern void print_banner() { early_serial_write("my-os\n"); }

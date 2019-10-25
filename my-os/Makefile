@@ -14,7 +14,6 @@ NASM_FLAGS ?= -g
 CFLAGS := $(CFLAGS) \
 -Wall \
 -Wextra \
--nostdinc \
 -fno-strict-aliasing \
 -fno-common \
 -ffreestanding \
@@ -33,8 +32,11 @@ LDFLAGS := -n -nostdlib # -fno-stack-protector
 
 OBJS = \
 $(ARCHDIR)/kernel/early_printk.o \
+$(ARCHDIR)/kernel/printk.o \
+$(ARCHDIR)/kernel/vsprintf.o \
 $(ARCHDIR)/boot.o \
-$(ARCHDIR)/idt.o
+$(ARCHDIR)/idt.o \
+$(ARCHDIR)/head64.o
 
 .PHONY: all
 

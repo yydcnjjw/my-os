@@ -73,8 +73,11 @@ gdt_ptr:
 
 section .boot_text
 global start
-start:
+start:    
     mov esp, stack_top
+    ; push multiboot info
+    push eax                    ; magic
+    push ebx                    ; multiboot_info_t
 
     ; detection of cpuid
     pushfd
@@ -164,6 +167,8 @@ set_pdt:
 
     lgdt [gdt_ptr]
 
+    pop ebx
+    pop eax
     jmp kernel64codeseg_index:start64
 hang:
     cli
@@ -179,20 +184,18 @@ no_longmode:
 bits 64
 global start64
 start64:
-    mov ax, 0
+    mov rdi, rbx
+    mov rsi, rax
+
+    xor rax, rax
     mov ds, ax
     mov es, ax
     mov ss, ax
     mov fs, ax
     mov gs, ax
 
-extern init_idt
-    call init_idt
-
-    call early_serial_init
-    call print_banner
-    call print_banner
-    call print_banner
+extern x86_64_start_kernel
+    call x86_64_start_kernel
     jmp $
 
 global load_idt

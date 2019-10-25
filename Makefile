@@ -22,7 +22,7 @@ bochs: my-os.iso
 	bochs -f bochs/myos.bxrc -q
 
 qemu_debug: my-os.iso
-	qemu-system-x86_64 -nographic -s -S .obj/my-os.iso
+	qemu-system-x86_64 -m 64 -no-reboot -nographic -s -S -cdrom .obj/my-os.iso
 
 qemu: my-os.iso
-	qemu-system-x86_64 -no-reboot -nographic -cdrom .obj/my-os.iso
+	qemu-system-x86_64 -m 64 -no-reboot -nographic -cdrom .obj/my-os.iso
