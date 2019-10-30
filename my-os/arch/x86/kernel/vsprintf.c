@@ -17,9 +17,9 @@ static int skip_atoi(const char **s) {
 #define SIGN 0x02    /* unsigned/signed long */
 #define PLUS 0x04    /* show plus */
 #define SPACE 0x08   /* space if plus */
-#define LEFT 0x0f    /* left justified */
-#define SPECIAL 0x10 /* 0x */
-#define SMALL 0x20   /* use 'abcdef' instead of 'ABCDEF' */
+#define LEFT 0x10    /* left justified */
+#define SPECIAL 0x20 /* 0x */
+#define SMALL 0x40   /* use 'abcdef' instead of 'ABCDEF' */
 
 #define do_div(n, base)                                                        \
     ({                                                                         \
@@ -216,9 +216,9 @@ int vsprintf(char *buf, const char *fmt, va_list args) {
 
         case 'p':
             if (field_width == -1) {
-                field_width = 8;
-                flags |= ZEROPAD;
+                field_width = 16;
             }
+            flags |= ZEROPAD;
             str = number(str, (unsigned long)va_arg(args, void *), 16,
                          field_width, precision, flags);
             break;

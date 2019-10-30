@@ -1,5 +1,5 @@
-#ifndef _ASM_X86_IO_H
-#define _ASM_X86_IO_H
+#ifndef _X86_ASM_IO_H
+#define _X86_ASM_IO_H
 
 #define BUILDIO(bwl, bw, type)                                                 \
     static inline void out##bwl(unsigned type value, int port) {               \
@@ -25,4 +25,4 @@ BUILDIO(l, , int)
 #define outw outw
 #define outl outl
 
-#endif /* _ASM_X86_IO_H */
+#endif /* _X86_ASM_IO_H */

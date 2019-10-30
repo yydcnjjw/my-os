@@ -1,4 +1,3 @@
-/*   multiboot2.h - Multiboot 2 header file. */
 /*   Copyright (C) 1999,2003,2007,2008,2009,2010  Free Software Foundation, Inc.
  *
  *  Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -19,6 +18,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
+
+#ifndef _X86_ASM_MULTIBOOT2_TYEPS_H
+#define _X86_ASM_MULTIBOOT2_TYEPS_H
 
 #ifndef MULTIBOOT_HEADER
 #define MULTIBOOT_HEADER 1
@@ -379,3 +381,5 @@ struct multiboot_tag_load_base_addr {
 #endif /*  ! ASM_FILE */
 
 #endif /*  ! MULTIBOOT_HEADER */
+
+#endif /* _X86_ASM_MULTIBOOT2_TYEPS_H */

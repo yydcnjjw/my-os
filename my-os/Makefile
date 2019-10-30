@@ -34,9 +34,12 @@ OBJS = \
 $(ARCHDIR)/kernel/early_printk.o \
 $(ARCHDIR)/kernel/printk.o \
 $(ARCHDIR)/kernel/vsprintf.o \
+$(ARCHDIR)/kernel/multiboot2.o \
 $(ARCHDIR)/boot.o \
 $(ARCHDIR)/idt.o \
-$(ARCHDIR)/head64.o
+$(ARCHDIR)/head64.o \
+mm/memblock.o
+
 
 .PHONY: all
 

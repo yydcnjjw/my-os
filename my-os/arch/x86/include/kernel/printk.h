@@ -1,5 +1,5 @@
-#ifndef _KERNEL_X86_PRINTK_H
-#define _KERNEL_X86_PRINTK_H
+#ifndef _X86_KERNEL_PRINTK_H
+#define _X86_KERNEL_PRINTK_H
 
 void early_serial_init();
 
@@ -8,4 +8,4 @@ unsigned int strlen(const char *);
 
 void print_banner();
 
-#endif /* _KERNEL_X86_PRINTK_H */
+#endif /* _X86_KERNEL_PRINTK_H */
