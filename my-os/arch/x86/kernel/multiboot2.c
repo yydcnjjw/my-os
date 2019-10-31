@@ -1,5 +1,5 @@
-#include <asm/page_types.h>
 #include <asm/multiboot2/api.h>
+#include <asm/page_types.h>
 #include <kernel/printk.h>
 
 static struct multiboot_tag_mmap *mmap_tag;
@@ -9,7 +9,12 @@ static struct multiboot_tag_mmap *mmap_tag;
          (void *)mmap < (void *)mmap_tag + mmap_tag->size;                     \
          mmap = (void *)mmap + mmap_tag->entry_size)
 
-static size_t multiboot2_end_pfn(u32 type) {
+#define MAX_ARCH_PFN MAXMEM >> PAGE_SHIFT
+
+static size_t multiboot2_end_pfn(size_t limit_pfn,
+                                 enum multiboot_memroy_type type) {
+    size_t last_pfn = 0;
+
     foreach_mmap_entries {
         if (mmap->type != type) {
             continue;
@@ -17,8 +22,34 @@ static size_t multiboot2_end_pfn(u32 type) {
 
         unsigned long start_pfn = mmap->addr >> PAGE_SHIFT;
         unsigned long end_pfn = (mmap->addr + mmap->len) >> PAGE_SHIFT;
-        
+
+        if (start_pfn >= limit_pfn)
+            continue;
+
+        if (end_pfn > limit_pfn) {
+            last_pfn = limit_pfn;
+            break;
+        }
+
+        if (end_pfn > last_pfn) {
+            last_pfn = end_pfn;
+        }
     }
+
+    if (last_pfn > MAX_ARCH_PFN) {
+        last_pfn = MAX_ARCH_PFN;
+    }
+
+    printk("last_pfn = %#x, max_arch_pfn=%#x\n", last_pfn, MAX_ARCH_PFN);
+    return last_pfn;
+}
+
+size_t multiboot2_end_of_ram_pfn() {
+    return multiboot2_end_pfn(MAX_ARCH_PFN, MULTIBOOT_MEMORY_AVAILABLE);
+}
+
+size_t multiboot2_end_of_low_ram_pfn() {
+    return multiboot2_end_pfn(1UL << (32 - PAGE_SHIFT), MULTIBOOT_MEMORY_AVAILABLE);
 }
 
 void print_memory_map() {
@@ -42,7 +73,7 @@ void print_memory_map() {
             printk("type = badram");
             break;
         }
-        printk("\n");        
+        printk("\n");
     }
 }
 

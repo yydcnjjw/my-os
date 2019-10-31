@@ -9,4 +9,6 @@ extern void x86_64_start_kernel(void *addr, unsigned int magic) {
     if (-1 == parse_multiboot2(addr, magic)) {
         // TODO: panic
     }
+
+    multiboot2_end_of_ram_pfn();
 }
