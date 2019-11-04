@@ -24,14 +24,14 @@ MB_TAG_END equ 0
 section .multiboot
 align 4
 multiboot_header_start:
-    DD MB_MAGIC
-    DD MB_ARCH
-    DD MB_HEADER_LEN
-    DD MB_CHECKSUM
+    dd MB_MAGIC
+    dd MB_ARCH
+    dd MB_HEADER_LEN
+    dd MB_CHECKSUM
     ; tag end
-    DW MB_TAG_END
-    DW 0
-    DD 8
+    dw MB_TAG_END
+    dw 0
+    dd 8
 multiboot_header_end:
 
 bits 32
