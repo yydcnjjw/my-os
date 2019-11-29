@@ -2,10 +2,12 @@
 #define _MY_OS_MEMBLOCK_H
 
 #include <my-os/types.h>
+#include <my-os/list.h>
 
 struct memblock_region {
     phys_addr_t base;
     size_t size;
+    struct list_head list;
 };
 
 struct memblock_type {
@@ -17,8 +19,6 @@ struct memblock_type {
 };
 
 struct memblock {
-    bool bottom_up; /* is bottom up direction? */
-    size_t current_limit;
     struct memblock_type memory;
     struct memblock_type reserved;
 };

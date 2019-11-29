@@ -12,23 +12,26 @@ NASM = nasm
 NASM_FLAGS ?= -g
 
 CFLAGS := $(CFLAGS) \
+-I$(ARCHDIR)/include \
+-Iinclude \
 -Wall \
 -Wextra \
--fno-strict-aliasing \
--fno-common \
--ffreestanding \
--fno-PIE \
--fno-stack-protector \
--mno-sse \
--mno-mmx \
--mno-sse2 \
--mcmodel=kernel \
+-mcmodel=large \
 -m64 \
--mno-red-zone \
--Iinclude \
--I$(ARCHDIR)/include \
+-fno-builtin \
+-fno-stack-protector \
+
+# -mno-red-zone \
+# -fno-strict-aliasing \
+# -fno-common \
+# -ffreestanding \
+# -fno-PIE \
+# -mno-sse \
+# -mno-mmx \
+# -mno-sse2 \
 # -fno-pie
-LDFLAGS := -n -nostdlib # -fno-stack-protector
+
+LDFLAGS := -b elf64-x86-64 # -n # -nostdlib
 
 OBJS = \
 $(ARCHDIR)/kernel/early_printk.o \
@@ -38,7 +41,8 @@ $(ARCHDIR)/kernel/multiboot2.o \
 $(ARCHDIR)/boot.o \
 $(ARCHDIR)/idt.o \
 $(ARCHDIR)/head64.o \
-mm/memblock.o
+mm/memblock.o \
+init/main.o
 
 
 .PHONY: all
@@ -50,7 +54,8 @@ $(BUILD_DIR):
 
 my-os.kernel: $(OBJS) $(ARCHDIR)/linker.ld
 	ld -o $(BUILD_DIR)/$@ -T $(ARCHDIR)/linker.ld $(LDFLAGS) $(foreach f, $(OBJS), $(BUILD_DIR)/$(f))
-	grub-file --is-x86-multiboot2 $(BUILD_DIR)/$@
+	objcopy -I elf64-x86-64 -S -R ".eh_frame" -R ".comment" -O binary $(BUILD_DIR)/$@ $(BUILD_DIR)/$@.bin
+	grub-file --is-x86-multiboot2 $(BUILD_DIR)/$@.bin
 
 %.o: %.c
 	$(CC) -MD -c -o $(BUILD_DIR)/$@ $(CFLAGS) $<
