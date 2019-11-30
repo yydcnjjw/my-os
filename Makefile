@@ -15,7 +15,7 @@ $(BUILD_DIR):
 my-os.iso: $(OBJS)
 	@mkdir -p $(BUILD_DIR)/iso
 	@cp -r boot $(BUILD_DIR)/iso
-	@cp $(BUILD_DIR)/my-os/my-os.kernel.bin $(BUILD_DIR)/iso/boot
+	@cp $(BUILD_DIR)/my-os/my-os.kernel $(BUILD_DIR)/iso/boot
 	@grub-mkrescue -o $(BUILD_DIR)/$@ $(BUILD_DIR)/iso 2> /dev/null
 
 bochs: my-os.iso

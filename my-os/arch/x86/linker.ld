@@ -41,7 +41,7 @@ SECTIONS
 
     _end_kernel = .;
 
-    .brk AT(ADDR(.bss) - KERNEL_VMA_START)
+    .brk : AT(ADDR(.brk) - KERNEL_VMA_START)
     {
         _brk_base = .;
         . += 16 * 1024;        

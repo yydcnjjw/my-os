@@ -1,6 +1,8 @@
 #ifndef _MY_OS_KERNEL_H
 #define _MY_OS_KERNEL_H
 
+#include <stddef.h>
+
 #define __cmp(x, y, op) ((x)op(y) ? (x) : (y))
 
 #define min(x, y) __cmp(x, y, <)

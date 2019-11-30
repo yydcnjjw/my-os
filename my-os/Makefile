@@ -42,6 +42,7 @@ $(ARCHDIR)/boot.o \
 $(ARCHDIR)/idt.o \
 $(ARCHDIR)/head64.o \
 mm/memblock.o \
+mm/stack_alloc.o \
 init/main.o
 
 
@@ -54,8 +55,8 @@ $(BUILD_DIR):
 
 my-os.kernel: $(OBJS) $(ARCHDIR)/linker.ld
 	ld -o $(BUILD_DIR)/$@ -T $(ARCHDIR)/linker.ld $(LDFLAGS) $(foreach f, $(OBJS), $(BUILD_DIR)/$(f))
-	objcopy -I elf64-x86-64 -S -R ".eh_frame" -R ".comment" -O binary $(BUILD_DIR)/$@ $(BUILD_DIR)/$@.bin
-	grub-file --is-x86-multiboot2 $(BUILD_DIR)/$@.bin
+# objcopy -I elf64-x86-64 -S -R ".eh_frame" -R ".comment" -O binary $(BUILD_DIR)/$@ $(BUILD_DIR)/$@.bin
+	grub-file --is-x86-multiboot2 $(BUILD_DIR)/$@
 
 %.o: %.c
 	$(CC) -MD -c -o $(BUILD_DIR)/$@ $(CFLAGS) $<

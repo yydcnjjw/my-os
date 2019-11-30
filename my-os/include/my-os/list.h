@@ -1,8 +1,8 @@
 #ifndef _MY_OS_LIST_H
 #define _MY_OS_LIST_H
 
-#include <my-os/types.h>
 #include <my-os/kernel.h>
+#include <my-os/types.h>
 
 struct list_head {
     struct list_head *next, *prev;
@@ -26,7 +26,7 @@ static inline void __list_add(struct list_head *new, struct list_head *prev,
     prev->next = new;
 }
 
-void list_add(struct list_head *new, struct list_head *head) {
+static inline void list_add(struct list_head *new, struct list_head *head) {
     __list_add(new, head, head->next);
 }
 
@@ -49,15 +49,28 @@ static inline void list_del(struct list_head *entry) {
 #define list_next_entry(pos, member)                                           \
     list_entry((pos)->member.next, typeof(*(pos)), member)
 
-#define list_for_each_entry(pos, head, member)                                 \
-    for (pos = list_next_entry(head, member); &pos->member != &(head)->member; \
-         pos = list_next_entry(pos, member))
+#define list_prev_entry(pos, member) \
+    list_entry((pos)->member.prev, typeof(*(pos)), member)
+
+#define list_first_entry(head, type, member)                                   \
+    list_entry((head)->next, type, member)
+
+#define list_last_entry(head, type, member)                                    \
+    list_entry((head)->prev, type, member)
+
+#define list_for_each_entry(entry, head, member)                               \
+    for (entry = list_first_entry(head, typeof(*entry), member);               \
+         &entry->member != (head); entry = list_next_entry(entry, member))
 
 static inline int list_len(struct list_head *head) {
     struct list_head *p;
     int i = 0;
     list_for_each(p, head) { i++; }
     return i;
+}
+
+static inline int list_empty(const struct list_head *head) {
+    return head->next == head;
 }
 
 #endif /* _MY_OS_LIST_H */

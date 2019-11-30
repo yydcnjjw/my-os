@@ -3,33 +3,34 @@
 
 #include <my-os/types.h>
 
+// usage:
+// STACK_POOL(name, num, type);
+// init_stack_pool(pool);
+
 struct stack_pool {
-    void *base;
-    void *top;
-    size_t size;
+    void *memory_pool;
+    void **blocks;
+    size_t top;
+    size_t n_block;
+    size_t block_size;
 };
 
-#define STACK_POOL_INIT(base, size)                                            \
-    { .base = base, .size = size, .top = 0 }
-
-#define STACK_POOL(name, size)                                                 \
-    char *__##name##_pool[size];                                                 \
-    struct stack_pool name = STACK_POOL_INIT(__##name_pool, size)
-
-static inline void *stack_alloc(struct stack_pool *stack, size_t size) {
-    if (stack->base + stack->size < stack->top + size) {
-        return NULL;
+#define STACK_POOL_INIT(pool_ptr, blocks_ptr, num, type)                       \
+    {                                                                          \
+        .memory_pool = pool_ptr, .blocks = blocks_ptr, .top = num,             \
+        .n_block = num, .block_size = sizeof(type)                             \
     }
-    void *ret = stack->top;
-    stack->top += size;
-    return ret;
-}
 
-static inline void stack_release(struct stack_pool *stack, size_t size) {
-    if (stack->base > stack->top - size) {
-        return;
-    }
-    stack->top -= size;
-}
+#define STACK_POOL(name, num, type)                                            \
+    char __##name##_memory[(num) * sizeof(type)];                              \
+    void *__##name##_blocks[num * sizeof(void *)];                             \
+    struct stack_pool name =                                                   \
+        STACK_POOL_INIT(__##name##_memory, __##name##_blocks, num, type)
+
+void init_stack_pool(struct stack_pool *pool);
+
+void *stack_alloc(struct stack_pool *pool);
+
+void stack_release(struct stack_pool *pool, void *p);
 
 #endif /* _MY_OS_STACK_ALLOC_H */
