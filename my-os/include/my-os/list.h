@@ -49,7 +49,7 @@ static inline void list_del(struct list_head *entry) {
 #define list_next_entry(pos, member)                                           \
     list_entry((pos)->member.next, typeof(*(pos)), member)
 
-#define list_prev_entry(pos, member) \
+#define list_prev_entry(pos, member)                                           \
     list_entry((pos)->member.prev, typeof(*(pos)), member)
 
 #define list_first_entry(head, type, member)                                   \
@@ -61,6 +61,10 @@ static inline void list_del(struct list_head *entry) {
 #define list_for_each_entry(entry, head, member)                               \
     for (entry = list_first_entry(head, typeof(*entry), member);               \
          &entry->member != (head); entry = list_next_entry(entry, member))
+
+#define list_for_each_entry_reverse(entry, head, member)                       \
+    for (entry = list_last_entry(head, typeof(*entry), member);                \
+         &entry->member != (head); entry = list_prev_entry(entry, member))
 
 static inline int list_len(struct list_head *head) {
     struct list_head *p;

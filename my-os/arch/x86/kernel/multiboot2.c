@@ -1,11 +1,12 @@
 #include <asm/multiboot2/api.h>
 #include <asm/page_types.h>
 #include <kernel/printk.h>
+#include <my-os/memblock.h>
 
 static struct multiboot_tag_mmap *mmap_tag;
 
-#define foreach_mmap_entries                                                   \
-    for (multiboot_memory_map_t *mmap = mmap_tag->entries;                     \
+#define for_each_mmap_entries(entry)                                           \
+    for (mmap = mmap_tag->entries;                                             \
          (void *)mmap < (void *)mmap_tag + mmap_tag->size;                     \
          mmap = (void *)mmap + mmap_tag->entry_size)
 
@@ -14,8 +15,8 @@ static struct multiboot_tag_mmap *mmap_tag;
 static size_t multiboot2_end_pfn(size_t limit_pfn,
                                  enum multiboot_memroy_type type) {
     size_t last_pfn = 0;
-
-    foreach_mmap_entries {
+    multiboot_memory_map_t *mmap;
+    for_each_mmap_entries(mmap) {
         if (mmap->type != type) {
             continue;
         }
@@ -44,17 +45,19 @@ static size_t multiboot2_end_pfn(size_t limit_pfn,
     return last_pfn;
 }
 
-size_t multiboot2_end_of_ram_pfn() {
+size_t multiboot2_end_of_ram_pfn(void) {
     return multiboot2_end_pfn(MAX_ARCH_PFN, MULTIBOOT_MEMORY_AVAILABLE);
 }
 
-size_t multiboot2_end_of_low_ram_pfn() {
-    return multiboot2_end_pfn(1UL << (32 - PAGE_SHIFT), MULTIBOOT_MEMORY_AVAILABLE);
+size_t multiboot2_end_of_low_ram_pfn(void) {
+    return multiboot2_end_pfn(1UL << (32 - PAGE_SHIFT),
+                              MULTIBOOT_MEMORY_AVAILABLE);
 }
 
-void print_memory_map() {
+void print_memory_map(void) {
     printk("mmap:\n");
-    foreach_mmap_entries {
+    multiboot_memory_map_t *mmap;
+    for_each_mmap_entries(mmap) {
         printk("base_addr = %p, length = %p, ", mmap->addr, mmap->len);
         switch (mmap->type) {
         case MULTIBOOT_MEMORY_AVAILABLE:
@@ -117,4 +120,13 @@ int parse_multiboot2(void *addr, u64 magic) {
         tag = (void *)tag + align(tag->size, 8);
     }
     return 0;
+}
+
+void multiboot2_memblock_setup(void) {
+    multiboot_memory_map_t *mmap;    
+    for_each_mmap_entries(mmap) {
+        if (MULTIBOOT_MEMORY_AVAILABLE == mmap->type) {
+            memblock_add(mmap->addr, mmap->len);
+        }
+    }
 }

@@ -23,7 +23,7 @@ struct stack_pool {
 
 #define STACK_POOL(name, num, type)                                            \
     char __##name##_memory[(num) * sizeof(type)];                              \
-    void *__##name##_blocks[num * sizeof(void *)];                             \
+    void *__##name##_blocks[num];                                              \
     struct stack_pool name =                                                   \
         STACK_POOL_INIT(__##name##_memory, __##name##_blocks, num, type)
 

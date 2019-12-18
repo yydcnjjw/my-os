@@ -6,17 +6,20 @@ KERNEL_VMA_START = 0xffffffff80000000;
 SECTIONS
 {
     . = KERNEL_LMA_START;
-    _start = .;
+    _boot_start = .;
     
-    .boot : ALIGN(4K)
+    .bootstrap : 
     {
         * (.multiboot)    
         * (.boot_text)
         * (.boot_data)
-        * (.boot_bss)
+        . = ALIGN(4K);
     }
-
+    _boot_end = .;
+    
     . += KERNEL_VMA_START;
+    _start = .;
+
     .text : AT(ADDR(.text) - KERNEL_VMA_START)
     {
         _text = .;
@@ -31,10 +34,19 @@ SECTIONS
         . = ALIGN(4K);
         _edata = .;
     }
+
+    .eh_frame : AT(ADDR(.eh_frame) - KERNEL_VMA_START)
+    {
+        _ehframe = .;
+        * (.eh_frame)
+        . = ALIGN(4K);
+    }
+
     .bss : AT(ADDR(.bss) - KERNEL_VMA_START)
     {
         _bss = .;
         * (.bss)
+        * (COMMON)
         . = ALIGN(4K);
         _ebss = .;
     }
@@ -48,6 +60,6 @@ SECTIONS
     }
 
     KERNEL_VMA_END = .;
-    KERNEL_LMA_END = (LOADADDR(.bss) + SIZEOF(.bss) + 0xFFF) & 0xfffffffffffff000;
+    KERNEL_LMA_END = (LOADADDR(.brk) + SIZEOF(.brk) + 0xFFF) & 0xfffffffffffff000;
     _end = .;
 }

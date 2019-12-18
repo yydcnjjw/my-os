@@ -5,7 +5,7 @@
 #include <my-os/stack_alloc.h>
 #include <kernel/printk.h>
 
-#define INIT_MEMBLOCK_REGIONS 32
+#define INIT_MEMBLOCK_REGIONS 128
 
 STACK_POOL(memblock_region_pool, INIT_MEMBLOCK_REGIONS, struct memblock_region);
 
@@ -172,11 +172,15 @@ static int memblock_remove_range(struct memblock_type *type, phys_addr_t base,
 }
 
 static int memblock_remove(phys_addr_t base, size_t size) {
+    phys_addr_t end = base + size - 1;
+    printk("memblock remove: [%p-%p]\n", base, end);    
     return memblock_remove_range(&__init_memblock.memory, base, size);
 }
 
 int memblock_free(phys_addr_t base, size_t size) {
-    return memblock_remove(base, size);
+    phys_addr_t end = base + size - 1;
+    printk("memblock free: [%p-%p]\n", base, end);
+    return memblock_remove_range(&__init_memblock.reserved, base, size);
 }
 
 int memblock_reserve(phys_addr_t base, size_t size) {
@@ -185,21 +189,63 @@ int memblock_reserve(phys_addr_t base, size_t size) {
     return memblock_add_range(&__init_memblock.reserved, base, size);
 }
 
+int memblock_add(phys_addr_t base, size_t size) {
+    phys_addr_t end = base + size - 1;
+    printk("memblock add: [%p-%p]\n", base, end);
+    return memblock_add_range(&__init_memblock.memory, base, size);    
+}
+
 void print_memblock_type(struct memblock_type *type) {
-    printk("name: \n", type->name);
-    printk("total size = %d, region size = %d\n", type->total_size, type->cnt);
-    struct memblock_region *region;
+    printk("name: %s\n", type->name);
+    printk("total size = %#x, region size = %d\n", type->total_size, type->cnt);
     
+    struct memblock_region *region;
     list_for_each_entry(region, &type->regions.list, list) {
         phys_addr_t end = region->base + region->size - 1;
         printk("memblock reserve: [%p-%p]\n", region->base, end);
     }
 }
 
-void print_memblock() {
+void print_memblock(void) {
     printk("memblock: \n");
     print_memblock_type(&__init_memblock.memory);
     print_memblock_type(&__init_memblock.reserved);
 }
 
-void *memblock_alloc(size_t size, size_t align) {}
+#define __round_mask(x, y) ((typeof(x))((y)-1))
+#define round_up(x, y) ((((x)-1) | __round_mask(x, y))+1)
+#define round_down(x, y) ((x) & ~__round_mask(x, y))
+
+
+static phys_addr_t memblock_find_in_range(size_t size, size_t align) {
+    struct list_head *head =   &__init_memblock.memory.regions.list;
+    struct memblock_region *region;
+
+    phys_addr_t addr;
+    list_for_each_entry_reverse(region, head, list) {
+        phys_addr_t rstart = region->base;
+        phys_addr_t rend = rstart + region->size;
+
+        addr = round_down(rend - size, align);
+        if (addr < rend && rend - addr >= size) {
+            return addr;
+        }
+    }
+    return 0;
+}
+
+void *memblock_alloc(size_t size, size_t align) {
+    phys_addr_t addr = memblock_find_in_range(size, align);
+    if (addr) {
+        memblock_reserve(addr, size);
+        return (void *)addr;
+    }
+
+    return 0;
+}
+
+
+
+void memblock_init() {
+    init_stack_pool(&memblock_region_pool);
+}

@@ -1,6 +1,3 @@
-extern print_banner
-extern early_serial_init
-    
 KERNEL_LMA_START equ 0x100000
 KERNEL_VMA_START equ 0xffffffff80000000
 extern KERNEL_LMA_END
@@ -11,7 +8,6 @@ extern KERNEL_LMA_END
 %define MMU_WRITABLE (1 << 1)
 %define MMU_USER_MEMORY (1 << 2)
 %define MMU_PDE_TWO_MB (1 << 7)
-
 
 ;; Declare constants for the multiboot2 header.
 MB_MAGIC equ 0xe85250d6        ; 'magic number' lets bootloader find the header
@@ -35,46 +31,10 @@ multiboot_header_start:
 multiboot_header_end:
 
 bits 32
-section .boot_bss
-align 16
-stack_bottom:
-    ; resb 0x4000                 ; 16 KiB
-    times 0x4000 db 0
-stack_top:
-
-section .boot_data
-align 0x1000
-pml4t:
-    times 512 dq 0
-pdpte_low:
-    times 512 dq 0
-pde_low:
-    times 512 dq 0
-pdpte_high:
-    times 512 dq 0
-pde_high:
-    times 512 dq 0
-
-gdt:
-    dw 0, 0
-    db 0, 0x00, 0x00, 0
-kernel64codeseg_index equ $ - gdt
-kernel64codeseg:
-    dw 0xffff, 0
-    db 0, 0x9e, 0xaf, 0
-kernel64dataseg_index equ $ - kernel64codeseg
-kernel64dataseg:
-    dw 0xffff, 0
-    db 0, 0x92, 0xcf, 0
-gdtlen equ $ - gdt
-gdt_ptr:
-    dw gdtlen - 1
-    dd gdt
-
 section .boot_text
 global start
 start:    
-    mov esp, stack_top
+    mov esp, boot_stack_top
     ; push multiboot info
     push eax                    ; magic
     push ebx                    ; multiboot_info_t
@@ -164,93 +124,63 @@ set_pdt:
     mov eax, cr0
     or eax, 1 << 31
     mov cr0, eax
-
-    lgdt [gdt_ptr]
-
+    
     pop ebx
     pop eax
-    jmp kernel64codeseg_index:start64
+
+    lgdt [gdt_ptr]
+    jmp boot64codeseg_index:boot_start_64
+
 hang:
     cli
     hlt
     jmp hang
 
-
 no_longmode:
     cli
     hlt
     jmp no_longmode
-
+    
 bits 64
-global start64
-start64:
+boot_start_64:
     mov rdi, rbx
     mov rsi, rax
 
-    xor rax, rax
+    xor ax, ax
     mov ds, ax
     mov es, ax
     mov ss, ax
-    mov fs, ax
-    mov gs, ax
+extern start_64
+    jmp start_64
 
-extern x86_64_start_kernel
-    call x86_64_start_kernel
-    jmp $
+section .boot_data
+global boot_stack_top
+align 16
+boot_stack_bottom:
+    ; resb 0x4000                 ; 16 KiB
+    times 0x4000 db 0
+boot_stack_top:
 
-global load_idt
-load_idt:
-    lidt [rdi]
-    sti
-    ret
-    
-global early_idt_handler_array
-early_idt_handler_array:
-%assign i 0    
-%rep 32
-    align 4
-    push i
-    jmp early_idt_handler_comm
-%assign i i + 1
-%endrep
+align 0x1000
+pml4t:
+    times 512 dq 0
+pdpte_low:
+    times 512 dq 0
+pde_low:
+    times 512 dq 0
+pdpte_high:
+    times 512 dq 0
+pde_high:
+    times 512 dq 0
 
-early_idt_handler_comm:
-    cld
-
-    push rsi
-    mov rsi, [rsp + 8]
-    mov [rsp + 8], rdi
-    push rdx
-    push rcx
-    push rax
-    push r8
-    push r9
-    push r10
-    push r11
-    push rbx
-    push rbp
-    push r12
-    push r13
-    push r14
-    push r15
-
-extern early_fixup_exception
-    mov rdi, rsp
-    call early_fixup_exception
-    
-    pop r15
-    pop r14
-    pop r13
-    pop r12
-    pop rbp
-    pop rbx
-    pop r11
-    pop r10
-    pop r9
-    pop r8
-    pop rax
-    pop rcx
-    pop rdx
-    pop rsi
-    pop rdi
-    iretq
+gdt:
+    dw 0, 0
+    db 0, 0x00, 0x00, 0
+boot64codeseg_index equ $ - gdt
+boot64codeseg:
+    dw 0xffff, 0
+    db 0, 0x9e, 0xaf, 0
+gdtlen equ $ - gdt
+gdt_ptr:
+    dw gdtlen - 1
+    dd gdt
