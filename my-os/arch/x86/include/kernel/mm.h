@@ -7,6 +7,7 @@ void early_alloc_pgt_buf(void);
 void init_mem_mapping(void);
 
 void *alloc_low_pages(size_t num);
+void *extend_brk(size_t size, size_t align);
 
 unsigned long init_memory_mapping(unsigned long start, unsigned long end);
 

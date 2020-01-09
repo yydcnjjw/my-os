@@ -3,6 +3,7 @@
 #include <my-os/kernel.h>
 #include <my-os/types.h>
 
+#include <kernel/mm.h>
 #include <kernel/printk.h>
 
 #define PAGE_SHIFT 12
@@ -11,14 +12,13 @@
 
 struct buddy_free_area {
     u8 max_order;
-    u8 *free_area;
+    u8 area[];
 };
 
 struct buddy_alloc {
     void *base_addr;
-    /* unsigned long size; */
     size_t free_area_num;
-    u8 *free_area;
+    struct buddy_free_area **free_area;
 };
 
 #define is_align(n, align) (!((n) & ((align)-1)))
@@ -30,8 +30,6 @@ struct buddy_alloc {
 
 #define buddy_node(buddy, i, j)                                                \
     ((buddy)->free_area + ((i)*FREE_AREA_NODE_NUM + (j)))
-
-struct buddy_alloc global_buddy;
 
 int log2(int x) {
     float fx;
@@ -55,50 +53,51 @@ struct buddy_alloc *buddy_new(phys_addr_t start, phys_addr_t end) {
     if (!is_align(mem_size, PAGE_SIZE)) {
         return NULL;
     }
+    size_t page_size = mem_size >> PAGE_SHIFT;
+    size_t total_pages = page_size;
 
-    size_t page_size = round_down((mem_size >> PAGE_SHIFT), 2);
-    if ((mem_size >> PAGE_SHIFT) != page_size) {
-        printk("page rest\n");
-    }
+    size_t free_area_order = MAX_ORDER;
+    size_t free_area_num = 0;
+    struct buddy_free_area **brk_free_area_base = NULL;
+    u8 *free_area_base = __va(start);
+    while (page_size) {
+        size_t map_page = 1 << free_area_order;
+        if (page_size < map_page) {
+            free_area_order--;
+            continue;
+        }
+        size_t node_num = (map_page << 1) - 1;
+        size_t node_order = free_area_order + 2;
 
-    size_t free_area_num = page_size / FREE_AREA_PFN;
-    printk("free area num %d\n", free_area_num);
-    size_t rest_page = page_size % FREE_AREA_PFN;
-    printk("rest page: %d\n", rest_page);
+        struct buddy_free_area **area =
+            extend_brk(sizeof(struct buddy_free_area *), 8);
+        *area = (struct buddy_free_area *)free_area_base;
 
-    struct buddy_alloc *buddy = &global_buddy;
-    buddy->free_area = __va(start);
-    size_t buddy_size = (sizeof(u8) * FREE_AREA_NODE_NUM * free_area_num) +
-                        sizeof(struct buddy_alloc);
-
-    buddy->free_area_num = free_area_num;
-    buddy->base_addr = __va(start);
-    printk("buddy size: %#x\n", buddy_size);
-
-    int node_order = MAX_ORDER + 2;
-    for (size_t i = 0; i < free_area_num; i++) {
-        for (size_t j = 0; j < FREE_AREA_NODE_NUM; j++) {
+        free_area_base[0] = free_area_order;
+        free_area_base += 1;
+        for (size_t j = 0; j < node_num; j++) {
             if (is_power_of_2(j + 1)) {
                 node_order--;
             }
-            *buddy_node(buddy, i, j) = node_order;
+            free_area_base[j] = node_order;
         }
-        node_order = MAX_ORDER + 2;
+        free_area_num++;
+        if (!brk_free_area_base)
+            brk_free_area_base = area;
+
+        free_area_base += node_num;
+        page_size -= map_page;
     }
 
-    size_t reserve_num = buddy->free_area_num;
-    size_t alloc_num = 0;
+    struct buddy_alloc *buddy = extend_brk(sizeof(struct buddy_alloc), 8);
+    buddy->base_addr = __va(start);
+    buddy->free_area_num = free_area_num;
+    buddy->free_area = brk_free_area_base;
 
     // mark reserve
-    size_t leaf_index = (1 << MAX_ORDER) - 1;
-    size_t free_area_index = 0;
+    size_t reserve_num = total_pages / FREE_AREA_PFN + 1;
     while (reserve_num) {
-        if (leaf_index > FREE_AREA_NODE_NUM) {
-            leaf_index = (1 << MAX_ORDER) - 1;
-            free_area_index++;
-        }
-        *buddy_node(buddy, free_area_index, leaf_index) = 0;
-        leaf_index++;
+        buddy_alloc(buddy, 0);
         reserve_num--;
     }
     return buddy;
@@ -108,15 +107,43 @@ struct buddy_alloc *buddy_new(phys_addr_t start, phys_addr_t end) {
 #define RIGHT_LEAF(index) ((index)*2 + 2)
 #define PARENT(index) (((index) + 1) / 2 - 1)
 
+size_t _buddy_alloc(struct buddy_free_area *area, size_t order) {
+    if (!area) {
+        return NULL;
+    }
+
+    size_t index = 0;
+    if (area->area[index] < order + 1) {
+        return NULL;
+    }
+
+    size_t node_order;
+    for (node_order = area->max_order + 1; node_order != order + 1;
+         node_order--) {
+        if (area->area[LEFT_LEAF(index)] >= order + 1) {
+            index = LEFT_LEAF(index);
+        } else {
+            index = RIGHT_LEAF(index);
+        }
+    }
+    area->area[index] = 0;
+    size_t ret = index;
+    while (index) {
+        index = PARENT(index);
+        area->area[index] =
+            max(area->area[LEFT_LEAF(index)], area->area[RIGHT_LEAF(index)]);
+    }
+
+    return ret;
+}
+
 void *buddy_alloc(struct buddy_alloc *buddy, size_t order) {
     if (!buddy || order > MAX_ORDER)
         return NULL;
 
     size_t i;
-    size_t index = 0;
-    size_t node_order;
     for (i = 0; i < buddy->free_area_num; i++) {
-        if (*buddy_node(buddy, i, 0) >= order + 1) {
+        if (buddy->free_area[i]->area[0] >= order + 1) {
             break;
         }
     }
@@ -125,77 +152,96 @@ void *buddy_alloc(struct buddy_alloc *buddy, size_t order) {
         return NULL;
     }
 
-    for (node_order = MAX_ORDER + 1; node_order != order + 1; node_order--) {
-        if (*buddy_node(buddy, i, LEFT_LEAF(index)) >= order + 1) {
-            index = LEFT_LEAF(index);
-        } else {
-            index = RIGHT_LEAF(index);
-        }
-    }
-    *buddy_node(buddy, i, index) = 0;
-    // TODO: set offset
+    size_t index = _buddy_alloc(buddy->free_area[i], order);
+
     void *offset = buddy->base_addr + ((FREE_AREA_PFN * i) << PAGE_SHIFT) +
                    (((index + 1) * (1 << order) - FREE_AREA_PFN) << PAGE_SHIFT);
 
     printk("alloc order %d, free area %d, index %d, addr %p\n", order, i, index,
            offset);
 
-    while (index) {
-        index = PARENT(index);
-        *buddy_node(buddy, i, index) =
-            max(*buddy_node(buddy, i, LEFT_LEAF(index)),
-                *buddy_node(buddy, i, RIGHT_LEAF(index)));
-    }
-
     return offset;
 }
 
-void buddy_free(struct buddy_alloc *buddy, void *offset) {
-    if (!is_align((unsigned long)offset, PAGE_SIZE)) {
-        // ERROR
-        return;
-    }
-    // TODO: use offset compute index and free area index;
+int get_free_area_index(struct buddy_alloc *buddy, void *offset,
+                        size_t *map_page_offset) {
     size_t page_offset = ((offset - buddy->base_addr) >> PAGE_SHIFT);
-    size_t free_area_index = page_offset / FREE_AREA_PFN;
-    size_t index = (page_offset % FREE_AREA_PFN) + FREE_AREA_PFN - 1;
+    size_t index = 0;
+    size_t map_page = 1 << buddy->free_area[index]->max_order;
+    while (page_offset >= map_page) {
+        if (index > buddy->free_area_num) {
+            return -1;
+        }
+        map_page += 1 << buddy->free_area[index]->max_order;
+        index++;
+    }
+    *map_page_offset = map_page - (1 << buddy->free_area[index]->max_order);
+    return index;
+}
 
+int _buddy_free(struct buddy_free_area *area, size_t area_offset) {
+    size_t index = area_offset + (1 << area->max_order) - 1;
     size_t node_order = 1;
-    for (; *buddy_node(buddy, free_area_index, index); index = PARENT(index)) {
+    for (; area->area[index]; index = PARENT(index)) {
         node_order++;
         if (index == 0) {
             break;
         }
     }
 
-    *buddy_node(buddy, free_area_index, index) = node_order;
-    printk("free order %d, free area %d, index %d, addr %p", --node_order,
-           free_area_index, index, offset);
+    area->area[index] = node_order;
 
     while (index) {
         index = PARENT(index);
         node_order++;
-        size_t left_order =
-            *buddy_node(buddy, free_area_index, LEFT_LEAF(index));
-        size_t right_order =
-            *buddy_node(buddy, free_area_index, RIGHT_LEAF(index));
+        size_t left_order = area->area[LEFT_LEAF(index)];
+        size_t right_order = area->area[RIGHT_LEAF(index)];
         if (left_order + right_order == node_order) {
-            *buddy_node(buddy, free_area_index, index) = node_order;
+            area->area[index] = node_order;
         } else {
-            *buddy_node(buddy, free_area_index, index) =
-                max(left_order, right_order);
+            area->area[index] = max(left_order, right_order);
         }
     }
+    return 0;
+}
+
+int buddy_free(struct buddy_alloc *buddy, void *offset) {
+    if (!is_align((unsigned long)offset, PAGE_SIZE)) {
+        return -1;
+    }
+
+    size_t map_page_offset = 0;
+    int free_area_index = get_free_area_index(buddy, offset, &map_page_offset);
+
+    if (free_area_index == -1) {
+        return -1;
+    }
+    size_t page_offset = ((offset - buddy->base_addr) >> PAGE_SHIFT);
+    size_t area_offset = page_offset - map_page_offset;
+
+    return _buddy_free(buddy->free_area[free_area_index], area_offset);
 }
 
 size_t buddy_size(struct buddy_alloc *buddy, void *offset) {
-    size_t node_order = 1;
-    // TODO: use offset compute index;
-    size_t page_offset = ((offset - buddy->base_addr) >> PAGE_SHIFT);
-    size_t free_area_index = page_offset / FREE_AREA_PFN;
-    size_t index = (page_offset % FREE_AREA_PFN) + FREE_AREA_PFN - 1;
+    if (!is_align((unsigned long)offset, PAGE_SIZE)) {
+        return -1;
+    }
+    size_t map_page_offset = 0;
+    int free_area_index = get_free_area_index(buddy, offset, &map_page_offset);
 
-    for (; *buddy_node(buddy, free_area_index, index); index = PARENT(index))
+    if (free_area_index == -1) {
+        return -1;
+    }
+    size_t page_offset = ((offset - buddy->base_addr) >> PAGE_SHIFT);
+    size_t area_offset = page_offset - map_page_offset;
+
+    struct buddy_free_area *area = buddy->free_area[free_area_index];
+    size_t index = area_offset + (1 << area->max_order) - 1;
+    size_t node_order = 1;
+    for (; area->area[index]; index = PARENT(index))
         node_order++;
+
+    printk("size order %d, free area %d, index %d, addr %p\n", --node_order,
+           free_area_index, index, offset);
     return 1 << --node_order << PAGE_SHIFT;
 }

@@ -40,9 +40,20 @@ void start_kernel(void) {
     struct buddy_alloc *buddy =
         buddy_new((phys_addr_t)KERNEL_LMA_END, end_pfn << PTE_SHIFT);
 
-    void *addr = buddy_alloc(buddy, 10);
-    printk("%#x\n", buddy_size(buddy, addr));
-    buddy_free(buddy, addr);
+    void *addr[5];
+    for (int i = 0; i < 5; i++) {
+        addr[i] = buddy_alloc(buddy, 5);
+        buddy_size(buddy, addr[i]);
+        printk("\n");
+    }
+    for (int i = 0; i < 2; i++) {
+        buddy_free(buddy, addr[i]);
+    }
+    for (int i = 0; i < 2; i++) {
+        addr[i] = buddy_alloc(buddy, 10);
+        buddy_size(buddy, addr[i]);
+        printk("\n");
+    }
 
     /* local_apic_init(); */
 }
