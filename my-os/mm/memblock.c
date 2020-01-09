@@ -3,6 +3,8 @@
 #include <my-os/kernel.h>
 #include <my-os/limits.h>
 #include <my-os/stack_alloc.h>
+
+#include <kernel/mm.h>
 #include <kernel/printk.h>
 
 #define INIT_MEMBLOCK_REGIONS 128
@@ -202,7 +204,7 @@ void print_memblock_type(struct memblock_type *type) {
     struct memblock_region *region;
     list_for_each_entry(region, &type->regions.list, list) {
         phys_addr_t end = region->base + region->size - 1;
-        printk("memblock reserve: [%p-%p]\n", region->base, end);
+        printk("memblock %s: [%p-%p]\n", type->name, region->base, end);
     }
 }
 
@@ -211,11 +213,6 @@ void print_memblock(void) {
     print_memblock_type(&__init_memblock.memory);
     print_memblock_type(&__init_memblock.reserved);
 }
-
-#define __round_mask(x, y) ((typeof(x))((y)-1))
-#define round_up(x, y) ((((x)-1) | __round_mask(x, y))+1)
-#define round_down(x, y) ((x) & ~__round_mask(x, y))
-
 
 static phys_addr_t memblock_find_in_range(size_t size, size_t align) {
     struct list_head *head =   &__init_memblock.memory.regions.list;
@@ -244,8 +241,15 @@ void *memblock_alloc(size_t size, size_t align) {
     return 0;
 }
 
-
-
 void memblock_init() {
     init_stack_pool(&memblock_region_pool);
+}
+
+void memblock_mem_mapping() {
+    struct memblock_type *memory = &__init_memblock.memory;
+    struct memblock_region *region;
+    list_for_each_entry(region, &memory->regions.list, list) {
+        phys_addr_t end = region->base + region->size - 1;
+        init_memory_mapping(region->base, end);
+    }    
 }

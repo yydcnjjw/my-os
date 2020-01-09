@@ -1,5 +1,6 @@
 #include <asm/io.h>
 #include <kernel/printk.h>
+#include <my-os/string.h>
 
 #define VGABASE 0xb8000
 

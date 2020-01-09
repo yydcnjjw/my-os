@@ -30,6 +30,7 @@ void *memblock_alloc(size_t size, size_t align);
 void print_memblock(void);
 
 void memblock_init();
+void memblock_mem_mapping();
 // phys_addr_t memblock_phys_alloc(size_t size, size_t align);
 
 #endif /* _MY_OS_MEMBLOCK_H */

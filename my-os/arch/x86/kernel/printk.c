@@ -16,14 +16,5 @@ int printk(const char *fmt, ...) {
     return i;
 }
 
-unsigned int strlen(const char *s) {
-    int n = 0;
-    char c;
-    while ((c = *s++) != '\0') {
-        n++;
-    }
-    return n;
-}
-
 extern void print_banner() { printk("my-os\n"); }
     

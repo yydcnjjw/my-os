@@ -75,14 +75,13 @@ start:
     and eax, ~(1<<31)
     mov cr0, eax
 
-    mov eax, pdpte_index(KERNEL_VMA_START)
     mov eax, pdpte_low
     or eax, MMU_PRESENT | MMU_WRITABLE
-    mov dword [pml4t + pml4e_index(KERNEL_LMA_START) * 8], eax
+    mov dword [early_pml4t + pml4e_index(KERNEL_LMA_START) * 8], eax
 
     mov eax, pdpte_high
     or eax, MMU_PRESENT | MMU_WRITABLE
-    mov dword [pml4t + pml4e_index(KERNEL_VMA_START) * 8], eax
+    mov dword [early_pml4t + pml4e_index(KERNEL_VMA_START) * 8], eax
 
     mov eax, pde_low
     or eax, MMU_PRESENT | MMU_WRITABLE
@@ -109,7 +108,7 @@ set_pdt:
     cmp esi, ecx
     jne set_pdt
 
-    mov eax, pml4t
+    mov eax, early_pml4t
     mov cr3, eax
 
     mov eax, cr4
@@ -162,7 +161,8 @@ boot_stack_bottom:
 boot_stack_top:
 
 align 0x1000
-pml4t:
+global early_pml4t
+early_pml4t:
     times 512 dq 0
 pdpte_low:
     times 512 dq 0

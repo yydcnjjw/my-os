@@ -10,7 +10,7 @@ static struct multiboot_tag_mmap *mmap_tag;
          (void *)mmap < (void *)mmap_tag + mmap_tag->size;                     \
          mmap = (void *)mmap + mmap_tag->entry_size)
 
-#define MAX_ARCH_PFN MAXMEM >> PAGE_SHIFT
+#define MAX_ARCH_PFN MAXMEM >> PTE_SHIFT
 
 static size_t multiboot2_end_pfn(size_t limit_pfn,
                                  enum multiboot_memroy_type type) {
@@ -21,8 +21,8 @@ static size_t multiboot2_end_pfn(size_t limit_pfn,
             continue;
         }
 
-        unsigned long start_pfn = mmap->addr >> PAGE_SHIFT;
-        unsigned long end_pfn = (mmap->addr + mmap->len) >> PAGE_SHIFT;
+        unsigned long start_pfn = mmap->addr >> PTE_SHIFT;
+        unsigned long end_pfn = (mmap->addr + mmap->len) >> PTE_SHIFT;
 
         if (start_pfn >= limit_pfn)
             continue;
@@ -50,7 +50,7 @@ size_t multiboot2_end_of_ram_pfn(void) {
 }
 
 size_t multiboot2_end_of_low_ram_pfn(void) {
-    return multiboot2_end_pfn(1UL << (32 - PAGE_SHIFT),
+    return multiboot2_end_pfn(1UL << (32 - PTE_SHIFT),
                               MULTIBOOT_MEMORY_AVAILABLE);
 }
 

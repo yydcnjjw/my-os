@@ -1,8 +1,11 @@
 #ifndef _MY_OS_TYPES_H
 #define _MY_OS_TYPES_H
+
 #include <stdint.h>
 
+#ifndef NULL
 #define NULL ((void*)0)
+#endif
 
 typedef __signed__ char s8;
 typedef unsigned char u8;

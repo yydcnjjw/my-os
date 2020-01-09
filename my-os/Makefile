@@ -45,8 +45,11 @@ $(ARCHDIR)/apic.o \
 $(ARCHDIR)/head_64.o \
 $(ARCHDIR)/head64.o \
 $(ARCHDIR)/boot.o \
+$(ARCHDIR)/mm.o \
+lib/string.o \
 mm/memblock.o \
 mm/stack_alloc.o \
+mm/buddy_alloc.o \
 init/main.o
 
 

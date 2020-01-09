@@ -1,7 +1,8 @@
 #define __ASSEMBLY__
 #include <asm/desc.h>
 #include <asm/segment.h>
-
+#include <asm/page_types.h>
+    
     .text
     .code64
     .globl start_64
@@ -54,10 +55,19 @@ early_idt_handler_comm:
     pushq %r14
     pushq %r15
 
+    cmpq $14, %rsi // page fault
+    jnz 10f
+    movq %cr2, %rdi
+.extern early_make_pgtable
+    call early_make_pgtable
+    andl %eax,%eax
+    jz 20f
+    
+10:
     movq %rsp, %rdi
-.extern early_fixup_exception    
+.extern early_fixup_exception
     call early_fixup_exception
-
+20: 
     decl early_recursion_flag(%rip)
     
     popq %r15
@@ -79,7 +89,7 @@ early_idt_handler_comm:
     addq $8, %rsp
     iretq
 
-    .data    
+    .data
     .align 16
     .globl early_gdt_descr
 early_gdt_ptr:
@@ -89,3 +99,8 @@ early_gdt_descr_base:
 
 initial_code:
     .quad x86_64_start_kernel
+
+    .globl early_dynamic_page_tables    
+    .align PTE_SIZE
+early_dynamic_page_tables:
+    .fill	512*EARLY_DYNAMIC_PAGE_TABLES,8,0

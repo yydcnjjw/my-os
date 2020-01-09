@@ -56,7 +56,7 @@ SECTIONS
     .brk : AT(ADDR(.brk) - KERNEL_VMA_START)
     {
         _brk_base = .;
-        . += 16 * 1024;        
+        . += 16 * 4K;        
     }
 
     KERNEL_VMA_END = .;

@@ -66,14 +66,14 @@ static inline void list_del(struct list_head *entry) {
     for (entry = list_last_entry(head, typeof(*entry), member);                \
          &entry->member != (head); entry = list_prev_entry(entry, member))
 
-static inline int list_len(struct list_head *head) {
+static inline size_t list_len(struct list_head *head) {
     struct list_head *p;
-    int i = 0;
+    size_t i = 0;
     list_for_each(p, head) { i++; }
     return i;
 }
 
-static inline int list_empty(const struct list_head *head) {
+static inline bool list_empty(const struct list_head *head) {
     return head->next == head;
 }
 
