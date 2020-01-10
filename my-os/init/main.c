@@ -40,9 +40,14 @@ void start_kernel(void) {
     struct buddy_alloc *buddy =
         buddy_new((phys_addr_t)KERNEL_LMA_END, end_pfn << PTE_SHIFT);
 
-    void *addr[5];
-    for (int i = 0; i < 5; i++) {
-        addr[i] = buddy_alloc(buddy, 5);
+    void *addr[10];
+    for (int i = 0; i < 10; i++) {
+        void *p = buddy_alloc(buddy, 11);
+        if (!p) {
+            printk("no memory\n");
+            break;
+        }
+        addr[i] = p;
         buddy_size(buddy, addr[i]);
         printk("\n");
     }
@@ -55,5 +60,5 @@ void start_kernel(void) {
         printk("\n");
     }
 
-    /* local_apic_init(); */
+    local_apic_init();
 }

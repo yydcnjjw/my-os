@@ -16,7 +16,7 @@ struct buddy_free_area {
 };
 
 struct buddy_alloc {
-    void *base_addr;
+    phys_addr_t base_addr;
     size_t free_area_num;
     struct buddy_free_area **free_area;
 };
@@ -30,17 +30,6 @@ struct buddy_alloc {
 
 #define buddy_node(buddy, i, j)                                                \
     ((buddy)->free_area + ((i)*FREE_AREA_NODE_NUM + (j)))
-
-int log2(int x) {
-    float fx;
-    unsigned long ix, exp;
-
-    fx = (float)x;
-    ix = *(unsigned long *)&fx;
-    exp = (ix >> 23) & 0xFF;
-
-    return exp - 127;
-}
 
 struct buddy_alloc *buddy_new(phys_addr_t start, phys_addr_t end) {
     printk("buddy: %#x-%#x\n", start, end);
@@ -90,7 +79,7 @@ struct buddy_alloc *buddy_new(phys_addr_t start, phys_addr_t end) {
     }
 
     struct buddy_alloc *buddy = extend_brk(sizeof(struct buddy_alloc), 8);
-    buddy->base_addr = __va(start);
+    buddy->base_addr = start;
     buddy->free_area_num = free_area_num;
     buddy->free_area = brk_free_area_base;
 
@@ -137,35 +126,46 @@ size_t _buddy_alloc(struct buddy_free_area *area, size_t order) {
     return ret;
 }
 
-void *buddy_alloc(struct buddy_alloc *buddy, size_t order) {
+long buddy_alloc_pfn(struct buddy_alloc *buddy, size_t order) {
     if (!buddy || order > MAX_ORDER)
         return NULL;
 
     size_t i;
+    size_t map_pfn = 0;
     for (i = 0; i < buddy->free_area_num; i++) {
         if (buddy->free_area[i]->area[0] >= order + 1) {
             break;
         }
+        map_pfn += 1 << buddy->free_area[i]->max_order;
     }
 
     if (i == buddy->free_area_num) {
-        return NULL;
+        return -1;
     }
 
     size_t index = _buddy_alloc(buddy->free_area[i], order);
-
-    void *offset = buddy->base_addr + ((FREE_AREA_PFN * i) << PAGE_SHIFT) +
-                   (((index + 1) * (1 << order) - FREE_AREA_PFN) << PAGE_SHIFT);
-
-    printk("alloc order %d, free area %d, index %d, addr %p\n", order, i, index,
-           offset);
-
-    return offset;
+    
+    map_pfn += (index + 1) * (1 << order) - (1 << buddy->free_area[i]->max_order);
+    printk("alloc order %d, free area %d, index %d, pfn %p\n", order, i, index,
+           map_pfn);
+    return (buddy->base_addr >> PAGE_SHIFT) + map_pfn;
 }
 
-int get_free_area_index(struct buddy_alloc *buddy, void *offset,
+void *buddy_alloc(struct buddy_alloc *buddy, size_t order) {
+    long pfn = buddy_alloc_pfn(buddy, order);
+    if (pfn == -1) {
+        return NULL;
+    }
+    phys_addr_t phys_addr = pfn << PAGE_SHIFT;
+    void *addr = __va(phys_addr);
+    printk("paddr %p, vaddr %p\n", phys_addr, addr);
+    return addr;
+}
+
+int buddy_get_free_area_index(struct buddy_alloc *buddy, void *addr,
                         size_t *map_page_offset) {
-    size_t page_offset = ((offset - buddy->base_addr) >> PAGE_SHIFT);
+    phys_addr_t phys_addr = __pa(addr);    
+    size_t page_offset = ((phys_addr - buddy->base_addr) >> PAGE_SHIFT);
     size_t index = 0;
     size_t map_page = 1 << buddy->free_area[index]->max_order;
     while (page_offset >= map_page) {
@@ -205,34 +205,39 @@ int _buddy_free(struct buddy_free_area *area, size_t area_offset) {
     return 0;
 }
 
-int buddy_free(struct buddy_alloc *buddy, void *offset) {
-    if (!is_align((unsigned long)offset, PAGE_SIZE)) {
+int buddy_free(struct buddy_alloc *buddy, void *addr) {
+    if (!is_align((unsigned long)addr, PAGE_SIZE)) {
         return -1;
     }
 
+    phys_addr_t phys_addr = __pa(addr);
+
     size_t map_page_offset = 0;
-    int free_area_index = get_free_area_index(buddy, offset, &map_page_offset);
+    int free_area_index = buddy_get_free_area_index(buddy, addr, &map_page_offset);
 
     if (free_area_index == -1) {
         return -1;
     }
-    size_t page_offset = ((offset - buddy->base_addr) >> PAGE_SHIFT);
+    size_t page_offset = ((phys_addr - buddy->base_addr) >> PAGE_SHIFT);
     size_t area_offset = page_offset - map_page_offset;
 
     return _buddy_free(buddy->free_area[free_area_index], area_offset);
 }
 
-size_t buddy_size(struct buddy_alloc *buddy, void *offset) {
-    if (!is_align((unsigned long)offset, PAGE_SIZE)) {
+size_t buddy_size(struct buddy_alloc *buddy, void *addr) {
+    if (!is_align((unsigned long)addr, PAGE_SIZE)) {
         return -1;
     }
+
+    phys_addr_t phys_addr = __pa(addr);
+    
     size_t map_page_offset = 0;
-    int free_area_index = get_free_area_index(buddy, offset, &map_page_offset);
+    int free_area_index = buddy_get_free_area_index(buddy, addr, &map_page_offset);
 
     if (free_area_index == -1) {
         return -1;
     }
-    size_t page_offset = ((offset - buddy->base_addr) >> PAGE_SHIFT);
+    size_t page_offset = ((phys_addr - buddy->base_addr) >> PAGE_SHIFT);
     size_t area_offset = page_offset - map_page_offset;
 
     struct buddy_free_area *area = buddy->free_area[free_area_index];
@@ -242,6 +247,6 @@ size_t buddy_size(struct buddy_alloc *buddy, void *offset) {
         node_order++;
 
     printk("size order %d, free area %d, index %d, addr %p\n", --node_order,
-           free_area_index, index, offset);
+           free_area_index, index, addr);
     return 1 << --node_order << PAGE_SHIFT;
 }
