@@ -50,6 +50,7 @@ lib/string.o \
 mm/memblock.o \
 mm/stack_alloc.o \
 mm/buddy_alloc.o \
+mm/slub_alloc.o \
 init/main.o
 
 

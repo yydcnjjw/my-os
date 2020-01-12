@@ -36,4 +36,8 @@ struct pglist_data {
     unsigned long node_start_pfn;
 };
 
+#define PAGE_SHIFT 12
+#define PAGE_SIZE (1UL << PAGE_SHIFT)
+#define PAGE_MASK (~(PAGE_SIZE - 1))
+
 #endif /* _MY_OS_MM_TYPES_H */

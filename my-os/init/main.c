@@ -9,6 +9,7 @@
 #include <kernel/mm.h>
 #include <kernel/printk.h>
 #include <my-os/buddy_alloc.h>
+#include <my-os/slub_alloc.h>
 
 void start_kernel(void) {
 
@@ -39,26 +40,7 @@ void start_kernel(void) {
 
     struct buddy_alloc *buddy =
         buddy_new((phys_addr_t)KERNEL_LMA_END, end_pfn << PTE_SHIFT);
-
-    void *addr[10];
-    for (int i = 0; i < 10; i++) {
-        void *p = buddy_alloc(buddy, 11);
-        if (!p) {
-            printk("no memory\n");
-            break;
-        }
-        addr[i] = p;
-        buddy_size(buddy, addr[i]);
-        printk("\n");
-    }
-    for (int i = 0; i < 2; i++) {
-        buddy_free(buddy, addr[i]);
-    }
-    for (int i = 0; i < 2; i++) {
-        addr[i] = buddy_alloc(buddy, 10);
-        buddy_size(buddy, addr[i]);
-        printk("\n");
-    }
-
+    
+    kmem_cache_init();
     local_apic_init();
 }
