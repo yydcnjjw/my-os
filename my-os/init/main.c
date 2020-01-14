@@ -2,7 +2,6 @@
 #include <asm/multiboot2/api.h>
 #include <asm/page_types.h>
 #include <asm/sections.h>
-
 #include <my-os/memblock.h>
 #include <my-os/mm_types.h>
 
@@ -10,7 +9,7 @@
 #include <kernel/printk.h>
 #include <my-os/buddy_alloc.h>
 #include <my-os/slub_alloc.h>
-
+size_t end_pfn;
 void start_kernel(void) {
 
     printk("lma end %p\n", (unsigned long)KERNEL_LMA_END);
@@ -30,16 +29,15 @@ void start_kernel(void) {
     memblock_init();
     early_alloc_pgt_buf();
 
-    size_t end_pfn = multiboot2_end_of_ram_pfn();
+    end_pfn = multiboot2_end_of_ram_pfn();
+    
     multiboot2_memblock_setup();
-    print_memblock();
-
+    print_memblock();    
+    
     init_mem_mapping();
+    init_buddy_alloc();
 
-    /* mem_init(); */
-
-    struct buddy_alloc *buddy =
-        buddy_new((phys_addr_t)KERNEL_LMA_END, end_pfn << PTE_SHIFT);
+    mem_init();
     
     kmem_cache_init();
     local_apic_init();

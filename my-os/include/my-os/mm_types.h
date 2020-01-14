@@ -13,8 +13,22 @@ struct mm_struct {
 extern struct mm_struct init_mm;
 
 struct page {
-    unsigned long flags;
+    unsigned int flags;
     int _refcount;
+    union {
+        struct {
+            union {
+                struct list_head slab_list;
+                struct {
+                    struct page *next;
+                };
+            };
+            void *freelist;
+            unsigned inuse : 16;
+            unsigned objects : 15;
+            unsigned frozen : 1;
+        };
+    };
 };
 
 extern struct page *mem_map;
@@ -26,7 +40,7 @@ struct free_area {
 
 #define MAX_ORDER 11
 struct zone {
-    struct free_area	free_area[MAX_ORDER];
+    struct free_area free_area[MAX_ORDER];
 };
 
 #define MAX_NR_ZONES 4 /* __MAX_NR_ZONES */

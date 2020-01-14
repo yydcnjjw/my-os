@@ -2,9 +2,12 @@
 #include <asm/processor.h>
 #include <asm/sections.h>
 
+#include <kernel/mm.h>
 #include <kernel/printk.h>
 
+#include <my-os/buddy_alloc.h>
 #include <my-os/kernel.h>
+#include <my-os/log2.h>
 #include <my-os/memblock.h>
 #include <my-os/mm_types.h>
 #include <my-os/string.h>
@@ -16,6 +19,9 @@ static phys_addr_t _brk_end = (phys_addr_t)_brk_base;
 static unsigned long pgt_buf_start;
 static unsigned long pgt_buf_end;
 static unsigned long pgt_buf_top;
+
+#define __VMEMMAP_BASE_L4 0xffffea0000000000UL
+unsigned long vmemmap_base = __VMEMMAP_BASE_L4;
 
 void *extend_brk(size_t size, size_t align) {
     size_t mask = align - 1;
@@ -144,7 +150,7 @@ static phys_addr_t phys_pdt_init(pde_t *pde_page, phys_addr_t paddr_start,
         } else {
             pte = alloc_low_pages(1);
             paddr_last = phys_pt_init(pte, paddr_start, paddr_end);
-            set_pde_init(pde, pte);            
+            set_pde_init(pde, pte);
         }
     }
     return paddr_last;
@@ -385,17 +391,115 @@ struct mm_struct init_mm = {};
 
 void init_mem_mapping(void) {
     init_memory_mapping(0, 0x100000);
-    
-    /* init_memory_mapping(__pa(init_mm.start_code), (phys_addr_t)KERNEL_LMA_END); */
-    
+
+    /* init_memory_mapping(__pa(init_mm.start_code),
+     * (phys_addr_t)KERNEL_LMA_END); */
+
     memblock_mem_mapping();
     write_cr3(__pa(init_mm.top_page));
 }
 
-struct mem_map {
-    struct page *mem_map;
-};
+void *vmemmap_alloc_block(size_t size) {
+    phys_addr_t addr = _alloc_pages(get_order(size));
+    if (!addr) {
+        return NULL;
+    }
+    void *vaddr = __va(addr);
+    memset(vaddr, 0, size);
+    return vaddr;
+}
+
+pml4e_t *vmemmap_pml4d_populate(unsigned long addr) {
+    pml4e_t *pml4d = pml4e_offset_k(addr);
+    if (!*pml4d) {
+        void *p = vmemmap_alloc_block(PAGE_SIZE);
+        if (!p) {
+            return NULL;
+        }
+        set_pml4e_init(pml4d, p);
+    }
+    return pml4d;
+}
+
+pdpte_t *vmemmap_pdptd_populate(pml4e_t *pml4e, unsigned long addr) {
+    pdpte_t *pdpte = pdpte_offset(pml4e, addr);
+    if (!*pdpte) {
+        void *p = vmemmap_alloc_block(PAGE_SIZE);
+        if (!p) {
+            return NULL;
+        }
+        set_pdpte_init(pdpte, p);
+    }
+    return pdpte;
+}
+
+pde_t *vmemmap_pded_populate(pdpte_t *pdpte, unsigned long addr) {
+    pde_t *pde = pde_offset(pdpte, addr);
+    if (!*pde) {
+        void *p = vmemmap_alloc_block(PAGE_SIZE);
+        if (!p) {
+            return NULL;
+        }
+        set_pde_init(pde, p);
+    }
+    return pde;
+}
+
+pte_t *vmemmap_ptd_populate(pde_t *pde, unsigned long addr) {
+    pte_t *pte = pte_offset(pde, addr);
+    if (!*pte) {
+        void *p = vmemmap_alloc_block(PAGE_SIZE);
+        if (!p) {
+            return NULL;
+        }
+        set_pte_init(pte, __pa(p));
+    }
+    return pte;
+}
+
+int vmemmap_populate_basepages(unsigned long start, unsigned long end) {
+    unsigned long addr = start;
+    pml4e_t *pml4d;
+    pdpte_t *pdptd;
+    pde_t *pded;
+    pte_t *ptd;
+
+    for (; addr < end; addr += PAGE_SIZE) {
+        /* printk("addr: %p\n", addr); */
+        pml4d = vmemmap_pml4d_populate(addr);
+        /* printk("pml4e: %p = %#x\n", pml4d, *pml4d); */
+        if (!pml4d) {
+            return -1;
+        }
+        pdptd = vmemmap_pdptd_populate(pml4d, addr);
+        /* printk("pdpte: %p = %#x\n", pdptd, *pdptd); */
+        if (!pdptd) {
+            return -1;
+        }
+        pded = vmemmap_pded_populate(pdptd, addr);
+        /* printk("pde: %p = %#x\n", pded, *pded); */
+        if (!pded) {
+            return -1;
+        }
+        ptd = vmemmap_ptd_populate(pded, addr);
+        /* printk("pte: %p = %#x\n", ptd, *ptd); */
+        if (!ptd) {
+            return -1;
+        }
+        /* printk("\n"); */
+    }
+    return 0;
+}
+
+void init_mapping_mempage(phys_addr_t start, phys_addr_t end) {
+    struct page *start_page = pfn_to_page(start >> PAGE_SHIFT);
+    struct page *end_page = pfn_to_page(end >> PAGE_SHIFT);
+    printk("vmemmap %p-%p\n", start_page, end_page);
+
+    vmemmap_populate_basepages((unsigned long)start_page,
+                               (unsigned long)end_page);
+}
 
 void mem_init() {
-    
+    init_mapping_mempage((phys_addr_t)KERNEL_LMA_END, end_pfn << PAGE_SHIFT);
 }
