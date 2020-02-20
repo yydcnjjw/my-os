@@ -13,6 +13,8 @@ static inline unsigned long __phys_addr(unsigned long x) {
 
 #define __pa(x) __phys_addr((unsigned long)(x))
 
+#define virt_to_page(kaddr)	pfn_to_page(__pa(kaddr) >> PAGE_SHIFT)
+
 #define pml4e_index(addr) (((addr) >> PML4E_SHIFT) & (PTRS_PER_PML4E - 1))
 #define pdpte_index(addr) (((addr) >> PDPTE_SHIFT) & (PTRS_PER_PDPTE - 1))
 #define pde_index(addr) (((addr) >> PDE_SHIFT) & (PTRS_PER_PDE - 1))

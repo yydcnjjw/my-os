@@ -249,7 +249,7 @@ void init_buddy_alloc() {
 phys_addr_t _alloc_pages(size_t order) {
     long pfn = buddy_alloc_pfn(buddy_base, order);
     if (pfn == -1) {
-        return NULL;
+        return 0;
     }
     return pfn << PAGE_SHIFT;
 }

@@ -37,6 +37,7 @@ struct kmem_cache {
 };
 
 void *kmalloc(size_t size, gfp_t flags);
+void kfree(void *);
 void kmem_cache_init(void);
 
 #define SLUB_NONE 0x0U

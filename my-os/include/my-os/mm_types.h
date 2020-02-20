@@ -17,12 +17,8 @@ struct page {
     int _refcount;
     union {
         struct {
-            union {
-                struct list_head slab_list;
-                struct {
-                    struct page *next;
-                };
-            };
+            struct list_head slub_list;
+            struct kmem_cache *slub_cache;
             void *freelist;
             unsigned inuse : 16;
             unsigned objects : 15;

@@ -1,6 +1,7 @@
 #include <asm/pgtable.h>
 #include <asm/processor.h>
 #include <asm/sections.h>
+#include <asm/apic.h>
 
 #include <kernel/mm.h>
 #include <kernel/printk.h>
@@ -391,6 +392,10 @@ struct mm_struct init_mm = {};
 
 void init_mem_mapping(void) {
     init_memory_mapping(0, 0x100000);
+
+    // fix mem io apic
+    init_memory_mapping(IOAPIC_DEFAULT_BASE, IOAPIC_DEFAULT_BASE + PTE_SIZE);
+    init_memory_mapping(0xFEE00000, 0xFEE00000 + PTE_SIZE);
 
     /* init_memory_mapping(__pa(init_mm.start_code),
      * (phys_addr_t)KERNEL_LMA_END); */

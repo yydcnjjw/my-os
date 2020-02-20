@@ -1,13 +1,21 @@
 #include <asm/desc.h>
+#include <asm/io.h>
+#include <asm/msr.h>
 #include <asm/segment.h>
+#include <asm/page.h>
+
 #include <kernel/printk.h>
 #include <my-os/types.h>
 
 gate_desc IDT[IDT_ENTRIES];
 
-struct desc_ptr idt_ptr = {
-    .size = (NUM_EXCEPTION_VECTORS * 2 * sizeof(unsigned long)) - 1,
-    .address = (unsigned long)IDT};
+/* struct desc_ptr idt_ptr = { */
+/*     .size = (NUM_EXCEPTION_VECTORS * 2 * sizeof(unsigned long)) - 1, */
+/*     .address = (unsigned long)IDT}; */
+
+struct desc_ptr idt_ptr = {.size =
+                               (IDT_ENTRIES * 2 * sizeof(unsigned long)) - 1,
+                           .address = (unsigned long)IDT};
 
 extern const char early_idt_handler_array[NUM_EXCEPTION_VECTORS]
                                          [EARLY_IDT_HANDLER_SIZE];
@@ -15,6 +23,9 @@ extern const char early_idt_handler_array[NUM_EXCEPTION_VECTORS]
 static inline void load_idt(const struct desc_ptr *dtr) {
     asm volatile("lidt %0" ::"m"(*dtr));
 }
+
+struct pt_regs;
+void debug_keyboard(struct pt_regs *regs, int trapnr);
 
 void early_init_idt() {
     for (int i = 0; i < NUM_EXCEPTION_VECTORS; i++) {
@@ -27,7 +38,19 @@ void early_init_idt() {
         idt_e->offset_middle = (u32)(irq_addr >> 16);
         idt_e->offset_high = (u32)(irq_addr >> 32);
         idt_e->reserved = 0;
-    }    
+    }
+
+    // debug keyboard
+    gate_desc *idt_e = IDT + 0x21;
+    unsigned long irq_addr = (unsigned long)&early_idt_handler_array[0];
+    idt_e->offset_low = (u16)irq_addr;
+    idt_e->segment = (u16)__KERNEL_CS;
+    idt_e->bits.type = GATE_INTERRUPT;
+    idt_e->bits.p = 1;
+    idt_e->offset_middle = (u32)(irq_addr >> 16);
+    idt_e->offset_high = (u32)(irq_addr >> 32);
+    idt_e->reserved = 0;
+
     load_idt(&idt_ptr);
 }
 
@@ -118,7 +141,21 @@ extern void early_fixup_exception(struct pt_regs *regs, int trapnr) {
         printk("vector num must < 256: %d", trapnr);
     }
 
+    if (trapnr == 0) {
+        debug_keyboard(regs, trapnr);
+        return;
+    }
+
 halt_loop:
     while (true)
         halt();
+}
+
+#define LAPIC_DEFAULT_BASE 0xfee00000
+#define EOI_REG_OFFSET 0xb0
+void debug_keyboard(struct pt_regs *regs, int trapnr) {
+    u8 x = inb(0x60);
+    printk("irq nr: %#x, key code: %#x", trapnr, x);
+    u32 *eoi = __va(LAPIC_DEFAULT_BASE + EOI_REG_OFFSET);
+    *eoi = 0;
 }

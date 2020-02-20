@@ -30,15 +30,34 @@ void start_kernel(void) {
     early_alloc_pgt_buf();
 
     end_pfn = multiboot2_end_of_ram_pfn();
-    
+
     multiboot2_memblock_setup();
-    print_memblock();    
-    
+    print_memblock();
+
     init_mem_mapping();
+    set_vga_base(__va(VGA_BASE));
     init_buddy_alloc();
 
     mem_init();
-    
+
     kmem_cache_init();
+
+    void *p[10];
+    for (int i = 0; i < 10; i++) {
+        p[i] = kmalloc(8, SLUB_NONE);
+    }
+
+    for (int i = 0; i < 5; i++) {
+        kfree(p[i]);
+    }
+    for (int i = 0; i < 5; i++) {
+        p[i] = kmalloc(8, SLUB_NONE);
+    }
+    for (int i = 0; i < 10; i++) {
+        kfree(p[i]);
+    }
+
     local_apic_init();
+
+    for (;;);
 }

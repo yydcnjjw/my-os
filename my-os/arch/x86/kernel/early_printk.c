@@ -2,45 +2,59 @@
 #include <kernel/printk.h>
 #include <my-os/string.h>
 
-#define VGABASE 0xb8000
+static int VGA_HEIGHT = 25, VGA_WIDTH = 80;
+static int current_col = 0, current_row = 0;
 
-static int max_ypos = 25, max_xpos = 80;
-static int current_ypos, current_xpos;
+u16 *vga_base = (u16 *)VGA_BASE;
 
-extern void early_vga_write(const char *str, unsigned int len) {
+void set_vga_base(void *addr) { vga_base = (u16 *)addr; }
 
-    char *vga_base = (char *)VGABASE;
+u16 *get_vga_ptr(int row, int col) { return vga_base + VGA_WIDTH * row + col; }
 
+void early_vga_clear_row(int row) {
+    for (int col = 0; col < VGA_WIDTH; col++) {
+        *get_vga_ptr(row, col) = 0x0;
+    }
+}
+
+void early_vga_scroll() {
+    /* scroll 1 line up */
+    int j = 0;
+    for (int row = 1; row < VGA_HEIGHT; row++, j++) {
+        for (int col = 0; col < VGA_WIDTH; col++) {
+            u16 *cover = get_vga_ptr(row - 1, col);
+            u16 *value = get_vga_ptr(row, col);
+            *cover = *value;
+        }
+    }
+
+    early_vga_clear_row(VGA_HEIGHT - 1);
+    current_col = 0;
+}
+
+void early_vga_write(const char *str) {
+    unsigned int len = strlen(str);
     char c;
     while ((c = *str++) != '\0' && len-- > 0) {
-        if (current_ypos >= max_ypos) {
-            /* scroll 1 line up */
-            int j = 0;
-            for (int i = 1; i < max_ypos; i++, j++) {
-                for (int k = 0; k < max_xpos; k++) {
-                    vga_base[2 * (max_xpos * j + k)] =
-                        vga_base[2 * (max_xpos * i + k)];
-                }
-            }
-            for (int i = 0; i < max_xpos; i++) {
-                vga_base[2 * (max_xpos * j + i)] = (char)0x720;
-            }
-            current_ypos = max_ypos - 1;
+        if (current_row == VGA_HEIGHT) {
+            early_vga_scroll();
+            current_row--;
         }
 
         if (c == '\n') {
-            current_xpos = 0;
-            current_ypos++;
+            current_col = 0;
+            current_row++;
         } else if (c != '\r') {
-            vga_base[2 * (max_ypos * current_ypos + current_xpos++)] = c;
+            *get_vga_ptr(current_row, current_col++) = 0x0f00 | c;
 
-            if (current_xpos >= max_xpos) {
-                current_xpos = 1;
-                current_ypos++;
+            if (current_col == VGA_WIDTH) {
+                current_col = 0;
+                current_row++;
             }
         }
     }
 }
+
 /* serial io impl */
 #define SERIAL_BASE 0x3f8
 

@@ -24,5 +24,11 @@ bochs: my-os.iso
 qemu_debug: my-os.iso
 	qemu-system-x86_64 -m 64 -no-reboot -nographic -s -S -cdrom .obj/my-os.iso
 
+qemu_gui_debug: my-os.iso
+	qemu-system-x86_64 -m 64 -no-reboot -s -S -cdrom .obj/my-os.iso
+
 qemu: my-os.iso
 	qemu-system-x86_64 -m 64 -no-reboot -nographic -cdrom .obj/my-os.iso
+
+qemu_gui: my-os.iso
+	qemu-system-x86_64 -m 64 -no-reboot -cdrom .obj/my-os.iso

@@ -32,7 +32,7 @@ CFLAGS := $(CFLAGS) \
 # -mno-sse2 \
 # -fno-pie
 
-LDFLAGS := -b elf64-x86-64 # -n # -nostdlib
+LDFLAGS := -b elf64-x86-64 # -n 
 
 OBJS = \
 $(ARCHDIR)/kernel/early_printk.o \
@@ -51,7 +51,11 @@ mm/memblock.o \
 mm/stack_alloc.o \
 mm/buddy_alloc.o \
 mm/slub_alloc.o \
-init/main.o
+init/main.o \
+# my-lisp/my_lisp.o \
+# my-lisp/my_lisp.lex.o \
+# my-lisp/my_lisp.tab.o \
+# my-lisp/my_lisp_main.o
 
 
 .PHONY: all

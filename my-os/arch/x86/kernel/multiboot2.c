@@ -127,6 +127,8 @@ void multiboot2_memblock_setup(void) {
     for_each_mmap_entries(mmap) {
         if (MULTIBOOT_MEMORY_AVAILABLE == mmap->type) {
             memblock_add(mmap->addr, mmap->len);
+        } else if (MULTIBOOT_MEMORY_RESERVED == mmap->type) {
+            memblock_reserve(mmap->addr, mmap->len);
         }
     }
 }
