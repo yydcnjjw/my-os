@@ -6,6 +6,7 @@
 void early_serial_init();
 void early_serial_write(const char *s);
 
+void early_vga_init();
 void early_vga_write(const char *s);
 void set_vga_base(void *addr);
 

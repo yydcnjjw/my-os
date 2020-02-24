@@ -9,6 +9,7 @@ int printk(const char *fmt, ...) {
     i = vsprintf(buf, fmt, args);
     va_end(args);
     early_vga_write(buf);
+    early_serial_write(buf);
     return i;
 }
 

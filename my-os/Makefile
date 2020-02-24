@@ -40,6 +40,7 @@ $(ARCHDIR)/kernel/printk.o \
 $(ARCHDIR)/kernel/vsprintf.o \
 $(ARCHDIR)/kernel/multiboot2.o \
 $(ARCHDIR)/idt.o \
+$(ARCHDIR)/entry_64.o \
 $(ARCHDIR)/gdt.o \
 $(ARCHDIR)/apic.o \
 $(ARCHDIR)/head_64.o \

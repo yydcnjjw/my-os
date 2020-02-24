@@ -58,6 +58,7 @@ void start_kernel(void) {
     }
 
     local_apic_init();
-
+extern void idt_setup(void);
+    idt_setup();
     for (;;);
 }

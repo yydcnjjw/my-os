@@ -1,11 +1,48 @@
 #include <asm/desc.h>
 #include <asm/io.h>
 #include <asm/msr.h>
-#include <asm/segment.h>
 #include <asm/page.h>
+#include <asm/segment.h>
 
 #include <kernel/printk.h>
 #include <my-os/types.h>
+
+struct idt_data {
+    unsigned int vector;
+    unsigned int segment;
+    struct idt_bits bits;
+    const void *addr;
+};
+
+#define DPL0 0x0
+#define DPL3 0x3
+
+#define DEFAULT_STACK 0
+
+#define G(_vector, _addr, _ist, _type, _dpl, _segment)                         \
+    {                                                                          \
+        .vector = _vector, .bits.ist = _ist, .bits.type = _type,               \
+        .bits.dpl = _dpl, .bits.p = 1, .addr = _addr, .segment = _segment,     \
+    }
+
+/* Interrupt gate */
+#define INTG(_vector, _addr)                                                   \
+    G(_vector, _addr, DEFAULT_STACK, GATE_INTERRUPT, DPL0, __KERNEL_CS)
+
+/* System interrupt gate */
+#define SYSG(_vector, _addr)                                                   \
+    G(_vector, _addr, DEFAULT_STACK, GATE_INTERRUPT, DPL3, __KERNEL_CS)
+
+/*
+ * Interrupt gate with interrupt stack. The _ist index is the index in
+ * the tss.ist[] array, but for the descriptor it needs to start at 1.
+ */
+#define ISTG(_vector, _addr, _ist)                                             \
+    G(_vector, _addr, _ist + 1, GATE_INTERRUPT, DPL0, __KERNEL_CS)
+
+/* Task gate */
+#define TSKG(_vector, _gdt)                                                    \
+    G(_vector, NULL, DEFAULT_STACK, GATE_TASK, DPL0, _gdt << 3)
 
 gate_desc IDT[IDT_ENTRIES];
 
@@ -25,7 +62,8 @@ static inline void load_idt(const struct desc_ptr *dtr) {
 }
 
 struct pt_regs;
-void debug_keyboard(struct pt_regs *regs, int trapnr);
+
+extern void int33(void);
 
 void early_init_idt() {
     for (int i = 0; i < NUM_EXCEPTION_VECTORS; i++) {
@@ -40,9 +78,13 @@ void early_init_idt() {
         idt_e->reserved = 0;
     }
 
+    load_idt(&idt_ptr);
+}
+
+void idt_setup(void) {
     // debug keyboard
     gate_desc *idt_e = IDT + 0x21;
-    unsigned long irq_addr = (unsigned long)&early_idt_handler_array[0];
+    unsigned long irq_addr = (unsigned long)int33;
     idt_e->offset_low = (u16)irq_addr;
     idt_e->segment = (u16)__KERNEL_CS;
     idt_e->bits.type = GATE_INTERRUPT;
@@ -50,8 +92,6 @@ void early_init_idt() {
     idt_e->offset_middle = (u32)(irq_addr >> 16);
     idt_e->offset_high = (u32)(irq_addr >> 32);
     idt_e->reserved = 0;
-
-    load_idt(&idt_ptr);
 }
 
 struct pt_regs {
@@ -141,11 +181,6 @@ extern void early_fixup_exception(struct pt_regs *regs, int trapnr) {
         printk("vector num must < 256: %d", trapnr);
     }
 
-    if (trapnr == 0) {
-        debug_keyboard(regs, trapnr);
-        return;
-    }
-
 halt_loop:
     while (true)
         halt();
@@ -153,9 +188,10 @@ halt_loop:
 
 #define LAPIC_DEFAULT_BASE 0xfee00000
 #define EOI_REG_OFFSET 0xb0
-void debug_keyboard(struct pt_regs *regs, int trapnr) {
+
+void do_keyboard(struct pt_regs *regs) {
     u8 x = inb(0x60);
-    printk("irq nr: %#x, key code: %#x", trapnr, x);
+    printk("key code: %#x\n", x);
     u32 *eoi = __va(LAPIC_DEFAULT_BASE + EOI_REG_OFFSET);
     *eoi = 0;
 }

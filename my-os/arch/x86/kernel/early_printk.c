@@ -2,16 +2,44 @@
 #include <kernel/printk.h>
 #include <my-os/string.h>
 
-static int VGA_HEIGHT = 25, VGA_WIDTH = 80;
-static int current_col = 0, current_row = 0;
+static u8 VGA_HEIGHT = 25, VGA_WIDTH = 80;
+static u8 current_col = 0, current_row = 0;
 
 u16 *vga_base = (u16 *)VGA_BASE;
 
+void enable_cursor(u8 cursor_start, u8 cursor_end) {
+	outb(0x0a, 0x3d4);
+    outb((inb(0x3d5) & 0xc0) | cursor_start, 0x3d5);
+ 
+	outb(0x0B, 0x3d4);
+	outb((inb(0x3d5) & 0xe0) | cursor_end, 0x3d5);
+}
+
+void disable_cursor() {
+	outb(0x0a, 0x3d4);
+	outb(0x20, 0x3d5);
+}
+
+void early_vga_init() {
+    enable_cursor(0, 0);
+    /* disable_cursor(); */
+}
+
 void set_vga_base(void *addr) { vga_base = (u16 *)addr; }
 
-u16 *get_vga_ptr(int row, int col) { return vga_base + VGA_WIDTH * row + col; }
+// FIXME: col row max value
+void update_cursor(u8 col, u8 row) {
+    u16 pos = row * VGA_WIDTH + col;
 
-void early_vga_clear_row(int row) {
+    outb(0x0f, 0x3d4);
+    outb((u8)(pos & 0xff), 0x3d5);
+    outb(0x0e, 0x3d4);
+    outb((u8)((pos >> 8) & 0xff), 0x3d5);
+}
+
+u16 *get_vga_ptr(u8 row, u8 col) { return vga_base + VGA_WIDTH * row + col; }
+
+void early_vga_clear_row(u8 row) {
     for (int col = 0; col < VGA_WIDTH; col++) {
         *get_vga_ptr(row, col) = 0x0;
     }

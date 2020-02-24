@@ -123,7 +123,9 @@ again:
 }
 
 void x86_64_start_kernel(void *addr, unsigned int magic) {
-    /* early_serial_init(); */
+    early_vga_init();
+    early_serial_init();
+    
     early_init_idt();
     pic_remap(0x20, 0x28);
     pic_disable();
