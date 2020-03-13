@@ -312,7 +312,8 @@ void _slub_free(struct kmem_cache *s, struct page *page, void *head) {
 
 void slub_free(struct kmem_cache *s, gfp_t flags, struct page *page,
                void *head) {
-    printk("slub free %s size %#x page %p addr %p\n", s->name, s->size, page, head);
+    printk("slub free %s size %#x page %p addr %p\n", s->name, s->size, page,
+           head);
     struct kmem_cache_cpu *c = &s->cpu_slab;
     if (c->page == page) {
         set_freepointer(s, head, c->freelist);
@@ -451,7 +452,8 @@ const struct kmalloc_info_t kmalloc_info[] = {
     INIT_KMALLOC_INFO(64, 64),   INIT_KMALLOC_INFO(128, 128),
     INIT_KMALLOC_INFO(256, 256), INIT_KMALLOC_INFO(512, 512),
     INIT_KMALLOC_INFO(1024, 1k), INIT_KMALLOC_INFO(2048, 2k),
-    INIT_KMALLOC_INFO(4096, 4k), INIT_KMALLOC_INFO(8192, 8k)};
+    INIT_KMALLOC_INFO(4096, 4k), INIT_KMALLOC_INFO(8192, 8k)
+};
 
 // only for init
 void create_kmalloc_caches(slub_flags_t flags) {

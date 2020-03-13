@@ -5,14 +5,16 @@
 #include <asm/pgtable.h>
 #include <asm/processor.h>
 
-#include <kernel/printk.h>
-#include <my-os/mm_types.h>
 #include <kernel/mm.h>
+#include <kernel/printk.h>
 
+#include <my-os/mm_types.h>
 #include <my-os/start_kernel.h>
 #include <my-os/string.h>
+#include <my-os/task.h>
 
-char early_stack[4096] = {0};
+// TODO: remove
+union thread_union init_thread_union;
 
 static inline void irq_disable(void) { asm volatile("cli" : : : "memory"); }
 
@@ -62,8 +64,8 @@ void pic_disable() {
     outb(0xff, PIC2_DATA);
 }
 
-extern pml4e_t early_pml4t[PTRS_PER_PML4E];
 extern pde_t early_dynamic_page_tables[EARLY_DYNAMIC_PAGE_TABLES][PTRS_PER_PTE];
+
 static size_t next_early_pgt;
 unsigned long __force_order;
 static void reset_early_page_table(void) {
@@ -112,7 +114,7 @@ again:
             reset_early_page_table();
             goto again;
         }
-        
+
         pde_p = early_dynamic_page_tables[next_early_pgt++];
         bzero(pde_p, sizeof(pde_t) * PTRS_PER_PDE);
         *pdpte_p =
@@ -122,19 +124,29 @@ again:
     return 0;
 }
 
-void x86_64_start_kernel(void *addr, unsigned int magic) {
+void early_init_io() {
     early_vga_init();
     early_serial_init();
-    
+}
+
+void early_init_intr() {
     early_init_idt();
     pic_remap(0x20, 0x28);
     pic_disable();
     irq_enable();
+}
 
+void setup_top_page() {
     pml4e_t *pml4e_page = alloc_low_pages(1);
     pml4e_page[511] = early_pml4t[511];
     init_mm.top_page = pml4e_page;
-    
+}
+
+void x86_64_start_kernel(void *addr, unsigned int magic) {
+    early_init_io();
+    early_init_intr();
+    setup_top_page();
+
     if (-1 == parse_multiboot2(addr, magic)) {
         // TODO: panic
     }

@@ -7,6 +7,41 @@
 #include <kernel/printk.h>
 #include <my-os/types.h>
 
+struct pt_regs {
+    /*
+     * C ABI says these regs are callee-preserved. They aren't saved on kernel
+     * entry unless syscall needs a complete, fully filled "struct pt_regs".
+     */
+    unsigned long r15;
+    unsigned long r14;
+    unsigned long r13;
+    unsigned long r12;
+    unsigned long bp;
+    unsigned long bx;
+    /* These regs are callee-clobbered. Always saved on kernel entry. */
+    unsigned long r11;
+    unsigned long r10;
+    unsigned long r9;
+    unsigned long r8;
+    unsigned long ax;
+    unsigned long cx;
+    unsigned long dx;
+    unsigned long si;
+    unsigned long di;
+    /*
+     * On syscall entry, this is syscall#. On CPU exception, this is error code.
+     * On hw interrupt, it's IRQ number:
+     */
+    unsigned long orig_ax;
+    /* Return frame for iretq */
+    unsigned long ip;
+    unsigned long cs;
+    unsigned long flags;
+    unsigned long sp;
+    unsigned long ss;
+    /* top of stack page */
+};
+
 struct idt_data {
     unsigned int vector;
     unsigned int segment;
@@ -61,8 +96,6 @@ static inline void load_idt(const struct desc_ptr *dtr) {
     asm volatile("lidt %0" ::"m"(*dtr));
 }
 
-struct pt_regs;
-
 extern void int33(void);
 
 void early_init_idt() {
@@ -93,41 +126,6 @@ void idt_setup(void) {
     idt_e->offset_high = (u32)(irq_addr >> 32);
     idt_e->reserved = 0;
 }
-
-struct pt_regs {
-    /*
-     * C ABI says these regs are callee-preserved. They aren't saved on kernel
-     * entry unless syscall needs a complete, fully filled "struct pt_regs".
-     */
-    unsigned long r15;
-    unsigned long r14;
-    unsigned long r13;
-    unsigned long r12;
-    unsigned long bp;
-    unsigned long bx;
-    /* These regs are callee-clobbered. Always saved on kernel entry. */
-    unsigned long r11;
-    unsigned long r10;
-    unsigned long r9;
-    unsigned long r8;
-    unsigned long ax;
-    unsigned long cx;
-    unsigned long dx;
-    unsigned long si;
-    unsigned long di;
-    /*
-     * On syscall entry, this is syscall#. On CPU exception, this is error code.
-     * On hw interrupt, it's IRQ number:
-     */
-    unsigned long orig_ax;
-    /* Return frame for iretq */
-    unsigned long ip;
-    unsigned long cs;
-    unsigned long flags;
-    unsigned long sp;
-    unsigned long ss;
-    /* top of stack page */
-};
 
 static void print_idt(int vector_num, struct pt_regs *regs) {
     printk("idt handler:\n");
@@ -184,14 +182,4 @@ extern void early_fixup_exception(struct pt_regs *regs, int trapnr) {
 halt_loop:
     while (true)
         halt();
-}
-
-#define LAPIC_DEFAULT_BASE 0xfee00000
-#define EOI_REG_OFFSET 0xb0
-
-void do_keyboard(struct pt_regs *regs) {
-    u8 x = inb(0x60);
-    printk("key code: %#x\n", x);
-    u32 *eoi = __va(LAPIC_DEFAULT_BASE + EOI_REG_OFFSET);
-    *eoi = 0;
 }

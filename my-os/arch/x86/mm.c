@@ -1,7 +1,7 @@
+#include <asm/apic.h>
 #include <asm/pgtable.h>
 #include <asm/processor.h>
 #include <asm/sections.h>
-#include <asm/apic.h>
 
 #include <kernel/mm.h>
 #include <kernel/printk.h>
@@ -12,6 +12,8 @@
 #include <my-os/memblock.h>
 #include <my-os/mm_types.h>
 #include <my-os/string.h>
+
+struct mm_struct init_mm = {.top_page = early_pml4t};
 
 #define pml4e_offset_k(addr)                                                   \
     init_mm.top_page + pml4e_index((unsigned long)(addr))
@@ -388,14 +390,12 @@ unsigned long init_memory_mapping(unsigned long start, unsigned long end) {
     return ret >> PTE_SHIFT;
 }
 
-struct mm_struct init_mm = {};
-
 void init_mem_mapping(void) {
     init_memory_mapping(0, 0x100000);
 
     // fix mem io apic
     init_memory_mapping(IOAPIC_DEFAULT_BASE, IOAPIC_DEFAULT_BASE + PTE_SIZE);
-    init_memory_mapping(0xFEE00000, 0xFEE00000 + PTE_SIZE);
+    init_memory_mapping(LAPIC_DEFAULT_BASE, LAPIC_DEFAULT_BASE + PTE_SIZE);
 
     /* init_memory_mapping(__pa(init_mm.start_code),
      * (phys_addr_t)KERNEL_LMA_END); */

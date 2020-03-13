@@ -21,15 +21,15 @@ CFLAGS := $(CFLAGS) \
 -m64 \
 -fno-builtin \
 -fno-stack-protector \
+# -mno-sse \
+# -mno-sse2 \
 
 # -mno-red-zone \
 # -fno-strict-aliasing \
 # -fno-common \
 # -ffreestanding \
 # -fno-PIE \
-# -mno-sse \
 # -mno-mmx \
-# -mno-sse2 \
 # -fno-pie
 
 LDFLAGS := -b elf64-x86-64 # -n 
@@ -40,6 +40,7 @@ $(ARCHDIR)/kernel/printk.o \
 $(ARCHDIR)/kernel/vsprintf.o \
 $(ARCHDIR)/kernel/multiboot2.o \
 $(ARCHDIR)/idt.o \
+$(ARCHDIR)/keyboard.o \
 $(ARCHDIR)/entry_64.o \
 $(ARCHDIR)/gdt.o \
 $(ARCHDIR)/apic.o \
@@ -47,6 +48,8 @@ $(ARCHDIR)/head_64.o \
 $(ARCHDIR)/head64.o \
 $(ARCHDIR)/boot.o \
 $(ARCHDIR)/mm.o \
+$(ARCHDIR)/smp.o \
+$(ARCHDIR)/smp_boot.o \
 lib/string.o \
 mm/memblock.o \
 mm/stack_alloc.o \

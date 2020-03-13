@@ -3,6 +3,8 @@
 
 #include <asm/page_types.h>
 
+#ifndef __ASSEMBLY__
+
 #define __va(x) ((void *)((unsigned long)(x) + PAGE_OFFSET))
 
 static inline unsigned long __phys_addr(unsigned long x) {
@@ -12,6 +14,10 @@ static inline unsigned long __phys_addr(unsigned long x) {
 }
 
 #define __pa(x) __phys_addr((unsigned long)(x))
+
+extern pml4e_t early_pml4t[PTRS_PER_PML4E];
+
+#endif
 
 #define virt_to_page(kaddr)	pfn_to_page(__pa(kaddr) >> PAGE_SHIFT)
 

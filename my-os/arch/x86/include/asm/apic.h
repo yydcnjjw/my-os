@@ -2,6 +2,7 @@
 #define X86_ASM_APIC_H
 
 #define IOAPIC_DEFAULT_BASE 0xfec00000
+#define LAPIC_DEFAULT_BASE 0xfee00000
 
 void local_apic_init(void);
 

@@ -78,5 +78,8 @@ enum pg_level {
 #define PHYSICAL_PDPTE_MASK (((signed long)PDPTE_MASK) & __PHYSICAL_MASK)
 
 #define EARLY_DYNAMIC_PAGE_TABLES 64
-    
+
+
+#define THREAD_SIZE (PTE_SIZE << 1)
+
 #endif /* _X86_ASM_PAGE_TYPES_H */

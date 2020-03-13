@@ -7,14 +7,14 @@
     .code64
     .globl start_64
 start_64:
-    leaq early_stack + 4096, %rsp
+    movq initial_stack(%rip), %rsp
     
     lgdt early_gdt_ptr(%rip)
     /* set up data segments */
-    xorl %eax,%eax
-    movl %eax,%ds
-    movl %eax,%ss
-    movl %eax,%es
+    xorl %eax, %eax
+    movl %eax, %ds
+    movl %eax, %ss
+    movl %eax, %es
 
     movq initial_code(%rip), %rax
     pushq $__KERNEL_CS
@@ -91,15 +91,18 @@ early_idt_handler_comm:
 
     .data
     .align 16
-    .globl early_gdt_descr
 early_gdt_ptr:
     .word GDT_ENTRIES * 8 - 1
 early_gdt_descr_base:
     .quad gdt_page
 
 initial_code:
+    .globl initial_code
     .quad x86_64_start_kernel
-
+initial_stack:
+    .globl initial_stack
+    .quad init_thread_union + THREAD_SIZE
+    
     .globl early_dynamic_page_tables    
     .align PTE_SIZE
 early_dynamic_page_tables:
