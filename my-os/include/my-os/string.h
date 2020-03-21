@@ -17,4 +17,10 @@ void *memcpy(void *dest, const void *src, size_t count);
 
 char *strcat(char *dest, const char *src);
 
+char *strchr(const char *s, int c);
+
+int memcmp(const void *cs, const void *ct, size_t count);
+
+char *strdup(char *s);
+
 #endif /* X86_KERNEL_STRING_H */

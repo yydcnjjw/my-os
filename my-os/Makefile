@@ -56,11 +56,15 @@ mm/stack_alloc.o \
 mm/buddy_alloc.o \
 mm/slub_alloc.o \
 init/main.o \
-# my-lisp/my_lisp.o \
-# my-lisp/my_lisp.lex.o \
-# my-lisp/my_lisp.tab.o \
-# my-lisp/my_lisp_main.o
-
+fs/ext2/super.o \
+drivers/ata/disk.o \
+my-lisp/strtox.o \
+my-lisp/strtod.o \
+my-lisp/my_lisp.lex.o \
+my-lisp/my_lisp.tab.o \
+my-lisp/my_lisp.o \
+my-lisp/my_lisp_boot.o \
+my-lisp/os.o
 
 .PHONY: all
 

@@ -220,8 +220,9 @@ static void remove_partial(struct kmem_cache *s, gfp_t gfpflags,
     struct kmem_cache_cpu *c = &s->cpu_slab;
     if (c->page == page) {
         c->page = NULL;
+        c->freelist = NULL;
     }
-    if (c->partial == page) {
+    if (!list_empty(&s->node.partial)) {
         int min = ((1 << 16) - 1);
         struct page *p;
         struct page *min_page;
@@ -266,7 +267,12 @@ redo:
 new_slab:
     if (c->partial) {
         c->page = c->partial;
+
         c->partial = list_next_entry(c->partial, slub_list);
+        if ((void *)c->partial == &s->node) {
+            c->partial = NULL;
+        }
+
         goto redo;
     }
 
@@ -312,8 +318,11 @@ void _slub_free(struct kmem_cache *s, struct page *page, void *head) {
 
 void slub_free(struct kmem_cache *s, gfp_t flags, struct page *page,
                void *head) {
+
+#ifdef SLUB_DEBUG
     printk("slub free %s size %#x page %p addr %p\n", s->name, s->size, page,
            head);
+#endif
     struct kmem_cache_cpu *c = &s->cpu_slab;
     if (c->page == page) {
         set_freepointer(s, head, c->freelist);
@@ -331,8 +340,14 @@ void kfree(void *addr) {
     if (!addr) {
         return;
     }
+
     struct page *page = virt_to_page(addr);
-    slub_free(page->slub_cache, SLUB_NONE, page, addr);
+
+    if (page->slub_cache) {
+        slub_free(page->slub_cache, SLUB_NONE, page, addr);
+    } else {
+        free_pages(page);
+    }
 }
 
 // only for init
@@ -406,20 +421,61 @@ struct kmem_cache *kmalloc_slub(size_t size, gfp_t flags) {
     return kmalloc_caches[index];
 }
 
+size_t slub_ksize(const struct kmem_cache *s) { return s->object_size; }
+
+size_t ksize(const void *ptr) {
+    struct page *page = virt_to_page(ptr);
+    if (!page->slub_cache) {
+        return pages_size(page);
+    }
+    return slub_ksize(page->slub_cache);
+}
+
+static void *kmalloc_large(size_t size, gfp_t flags) {
+    int order = get_order(size);
+    struct page *page = alloc_pages(order);
+    void *p = page_addr(page);
+#ifdef SLUB_DEBUG
+    printk("alloc large size %#x addr %p\n", 1 << order, p);
+#endif
+    return p;
+}
+
 void *kmalloc(size_t size, gfp_t flags) {
     struct kmem_cache *s;
     // Consider the case is larger than the cache
     if (size > KMALLOC_MAX_CACHE_SIZE) {
-        // use alloc page
-        return NULL;
+        return kmalloc_large(size, flags);
     }
     s = kmalloc_slub(size, flags);
     if (!s) {
         return s;
     }
     void *o = slub_alloc(s, flags);
+#ifdef SLUB_DEBUG
     printk("slub alloc %s size %#x addr %p\n", s->name, s->size, o);
+#endif
     return o;
+}
+
+// TODO:
+void *krealloc(void *p, size_t size, gfp_t flags) {
+
+    size_t ks = 0;
+    if (p) {
+        ks = ksize(p);
+    }
+
+    if (ks >= size) {
+        return p;
+    }
+
+    void *new = kmalloc(size, flags);
+    if (new &&p) {
+        memcpy(new, p, size);
+    }
+
+    return new;
 }
 
 struct kmem_cache *create_kmalloc_cache(const char *name, unsigned int size,
@@ -452,8 +508,7 @@ const struct kmalloc_info_t kmalloc_info[] = {
     INIT_KMALLOC_INFO(64, 64),   INIT_KMALLOC_INFO(128, 128),
     INIT_KMALLOC_INFO(256, 256), INIT_KMALLOC_INFO(512, 512),
     INIT_KMALLOC_INFO(1024, 1k), INIT_KMALLOC_INFO(2048, 2k),
-    INIT_KMALLOC_INFO(4096, 4k), INIT_KMALLOC_INFO(8192, 8k)
-};
+    INIT_KMALLOC_INFO(4096, 4k), INIT_KMALLOC_INFO(8192, 8k)};
 
 // only for init
 void create_kmalloc_caches(slub_flags_t flags) {

@@ -12,6 +12,10 @@
 
 #include <kernel/mm.h>
 #include <kernel/printk.h>
+#include <kernel/keyboard.h>
+#include <my-os/disk.h>
+
+#include "../my-lisp/my_lisp.h"
 
 #define CPUID_FEAT_EDX_FPU 0
 #define CPUID_FEAT_EDX_MMX 23
@@ -62,6 +66,10 @@ void fpu_init() {
     printk("%d\n", (int)(a * 10 * 2.1));
 }
 
+void pic_bus() {
+    
+}
+
 size_t end_pfn;
 void start_kernel(void) {
 
@@ -95,29 +103,24 @@ void start_kernel(void) {
 
     kmem_cache_init();
 
-    void *p[10];
-    for (int i = 0; i < 10; i++) {
-        p[i] = kmalloc(8, SLUB_NONE);
-    }
-
-    for (int i = 0; i < 5; i++) {
-        kfree(p[i]);
-    }
-    for (int i = 0; i < 5; i++) {
-        p[i] = kmalloc(8, SLUB_NONE);
-    }
-    for (int i = 0; i < 10; i++) {
-        kfree(p[i]);
-    }
-
     local_apic_init();
 
     extern void idt_setup(void);
     idt_setup();
 
-    smp_init();
+
+    /* void *p = kmalloc(64, SLUB_NONE); */
+    /* kfree(p); */
+    /* p = kmalloc(64, SLUB_NONE);    */ 
+    /* smp_init(); */
 
     fpu_init();
+
+    keyboard_init();
+    ata_init();
+    if (my_lisp_boot()) {
+        printk("my lisp boot error");
+    }
 
     for (;;)
         ;

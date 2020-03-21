@@ -1,6 +1,9 @@
 #include <asm/io.h>
 #include <asm/page.h>
+#include <asm/idt.h>
+
 #include <kernel/printk.h>
+#include <my-os/slub_alloc.h>
 #include <my-os/types.h>
 
 #define LAPIC_DEFAULT_BASE 0xfee00000
@@ -161,22 +164,88 @@ unsigned int keycode_map_normal[NR_SCAN_CODES * MAP_COLS] = //
         /*0x7f*/ 0,    0,
 };
 
-void do_keyboard(struct pt_regs *regs) {
-    u8 x = inb(0x60);
-    printk("key code: %#x\n", x);
+struct keyboard_t {
+    int buf_size;
+    unsigned char *buf;
+    unsigned char *head;
+    unsigned char *tail;
+    int count;
 
-    /* struct keyboard_code code = {.state = x & 0x80, .code = x & 0x7f}; */
+    bool shift_l;
+} keyboard;
+
+bool is_keyboard_init = false;
+
+extern void int33(void);
+
+void keyboard_init(void) {
+    irq_set_handler(0x21, int33);
+    keyboard.buf_size = 128;
+    void *p = kmalloc(keyboard.buf_size, SLUB_NONE);
+    if (!p) {
+        printk("keyboard init error\n");
+        keyboard.buf = NULL;
+    }
+
+    keyboard.buf = p;
+    keyboard.head = p;
+    keyboard.tail = p;
+    keyboard.shift_l = false;
+    is_keyboard_init = true;
+}
+
+unsigned char get_scancode() {
+    if (!keyboard.count)
+        return 0;
+
+    if (keyboard.tail == keyboard.buf + keyboard.buf_size) {
+        keyboard.tail = keyboard.buf;
+    }
+    unsigned char ret = *keyboard.tail;
+    --keyboard.count;
+    ++keyboard.tail;
+    return ret;
+}
+
+int get_charcode(char *ch) {
+    if (!ch) {
+        return -1;
+    }
+
+    unsigned char x = get_scancode();
 
     size_t index = (x & 0x7f) * 2;
-    char ch[2] = {};
-    char *s;
-    ch[0] = keycode_map_normal[index];
-    if (ch[0]) {
-        s = ch;
+    bool state = (x & 0x80);
+
+    if (keyboard.shift_l) {
+        *ch = keycode_map_normal[index + 1];
     } else {
-        s = "null";
+        *ch = keycode_map_normal[index];
     }
-    printk("state %d, ch %s\n", !!(x & 0x80), s);
+
+    if (*ch == 0x2a) {
+        keyboard.shift_l = !state;
+        *ch = 0;
+        return 0;
+    }
+
+    if (state) {
+        *ch = 0;
+        return 0;
+    }
+    return 0;
+}
+
+void do_keyboard(struct pt_regs *regs) {
+    u8 x = inb(0x60);
+
+    if (is_keyboard_init) {
+        if (keyboard.head == keyboard.buf + keyboard.buf_size) {
+            keyboard.head = keyboard.buf;
+        }
+        *keyboard.head++ = x;
+        ++keyboard.count;
+    }
 
     u32 *eoi = __va(LAPIC_DEFAULT_BASE + EOI_REG_OFFSET);
     *eoi = 0;

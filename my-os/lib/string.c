@@ -1,3 +1,4 @@
+#include <my-os/slub_alloc.h>
 #include <my-os/string.h>
 
 size_t strlen(const char *s) {
@@ -68,4 +69,28 @@ char *strcat(char *dest, const char *src) {
     while ((*dest++ = *src++) != '\0')
         ;
     return tmp;
+}
+
+char *strchr(const char *s, int c) {
+    for (; *s != (char)c; ++s)
+        if (*s == '\0')
+            return NULL;
+    return (char *)s;
+}
+
+int memcmp(const void *cs, const void *ct, size_t count) {
+    const unsigned char *su1, *su2;
+    int res = 0;
+
+    for (su1 = cs, su2 = ct; 0 < count; ++su1, ++su2, count--)
+        if ((res = *su1 - *su2) != 0)
+            break;
+    return res;
+}
+
+char *strdup(char *s) {
+    size_t len = strlen(s) + 1;
+    char *new = kmalloc(len, SLUB_NONE);
+    memcpy(new, s, len );
+    return new;
 }

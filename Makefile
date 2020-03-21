@@ -21,14 +21,16 @@ my-os.iso: $(OBJS)
 bochs: my-os.iso
 	bochs -f bochs/myos.bxrc -q
 
+qemu_args=-smp 2 -m 64 -no-reboot -cdrom .obj/my-os.iso -drive format=raw,file=.obj/disk.img
+
 qemu_debug: my-os.iso
-	qemu-system-x86_64 -smp 2 -m 64 -no-reboot -nographic -s -S -cdrom .obj/my-os.iso
+	qemu-system-x86_64 $(qemu_args) -nographic -s -S
 
 qemu_gui_debug: my-os.iso
-	qemu-system-x86_64 -smp 2 -m 64 -no-reboot -s -S -cdrom .obj/my-os.iso
+	qemu-system-x86_64 $(qemu_args) -s -S
 
 qemu: my-os.iso
-	qemu-system-x86_64 -smp 2 -m 64 -no-reboot -nographic -cdrom .obj/my-os.iso
+	qemu-system-x86_64 $(qemu_args) -nographic
 
 qemu_gui: my-os.iso
-	qemu-system-x86_64 -smp 2 -m 64 -no-reboot -cdrom .obj/my-os.iso
+	qemu-system-x86_64 $(qemu_args)

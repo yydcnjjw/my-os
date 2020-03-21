@@ -96,8 +96,6 @@ static inline void load_idt(const struct desc_ptr *dtr) {
     asm volatile("lidt %0" ::"m"(*dtr));
 }
 
-extern void int33(void);
-
 void early_init_idt() {
     for (int i = 0; i < NUM_EXCEPTION_VECTORS; i++) {
         unsigned long irq_addr = (unsigned long)early_idt_handler_array[i];
@@ -114,10 +112,10 @@ void early_init_idt() {
     load_idt(&idt_ptr);
 }
 
-void idt_setup(void) {
-    // debug keyboard
-    gate_desc *idt_e = IDT + 0x21;
-    unsigned long irq_addr = (unsigned long)int33;
+typedef void (*irq_handler_t)(void);
+void irq_set_handler(u32 irq, irq_handler_t handle) {
+    gate_desc *idt_e = IDT + irq;
+    unsigned long irq_addr = (unsigned long)handle;
     idt_e->offset_low = (u16)irq_addr;
     idt_e->segment = (u16)__KERNEL_CS;
     idt_e->bits.type = GATE_INTERRUPT;
@@ -126,6 +124,10 @@ void idt_setup(void) {
     idt_e->offset_high = (u32)(irq_addr >> 32);
     idt_e->reserved = 0;
 }
+
+void idt_setup(void) {
+}
+
 
 static void print_idt(int vector_num, struct pt_regs *regs) {
     printk("idt handler:\n");

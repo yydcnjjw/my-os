@@ -6,49 +6,181 @@ static u8 VGA_HEIGHT = 25, VGA_WIDTH = 80;
 static u8 current_col = 0, current_row = 0;
 
 u16 *vga_base = (u16 *)VGA_BASE;
+#define VGA_AC_INDEX 0x3C0
+#define VGA_AC_WRITE 0x3C0
+#define VGA_AC_READ 0x3C1
+#define VGA_MISC_WRITE 0x3C2
+#define VGA_SEQ_INDEX 0x3C4
+#define VGA_SEQ_DATA 0x3C5
+#define VGA_DAC_READ_INDEX 0x3C7
+#define VGA_DAC_WRITE_INDEX 0x3C8
+#define VGA_DAC_DATA 0x3C9
+#define VGA_MISC_READ 0x3CC
+#define VGA_GC_INDEX 0x3CE
+#define VGA_GC_DATA 0x3CF
 
-void enable_cursor(u8 cursor_start, u8 cursor_end) {
-	outb(0x0a, 0x3d4);
-    outb((inb(0x3d5) & 0xc0) | cursor_start, 0x3d5);
- 
-	outb(0x0B, 0x3d4);
-	outb((inb(0x3d5) & 0xe0) | cursor_end, 0x3d5);
+#define VGA_CRTC_INDEX 0x3D4 /* 0x3B4 */
+#define VGA_CRTC_DATA 0x3D5  /* 0x3B5 */
+#define VGA_INSTAT_READ 0x3DA
+
+#define VGA_NUM_SEQ_REGS 5
+#define VGA_NUM_CRTC_REGS 25
+#define VGA_NUM_GC_REGS 9
+#define VGA_NUM_AC_REGS 21
+#define VGA_NUM_REGS                                                           \
+    (1 + VGA_NUM_SEQ_REGS + VGA_NUM_CRTC_REGS + VGA_NUM_GC_REGS +              \
+     VGA_NUM_AC_REGS)
+
+/* unsigned char g_80x25_text[] = { */
+/*     /\* MISC *\/ */
+/*     0x67, */
+/*     /\* SEQ *\/ */
+/*     0x03, 0x00, 0x03, 0x00, 0x02, */
+/*     /\* CRTC *\/ */
+/*     0x5F, 0x4F, 0x50, 0x82, 0x55, 0x81, 0xBF, 0x1F, 0x00, 0x4F, 0x0D, 0x0E,
+ */
+/*     0x00, 0x00, 0x00, 0x50, 0x9C, 0x0E, 0x8F, 0x28, 0x1F, 0x96, 0xB9, 0xA3,
+ */
+/*     0xFF, */
+/*     /\* GC *\/ */
+/*     0x00, 0x00, 0x00, 0x00, 0x00, 0x10, 0x0E, 0x00, 0xFF, */
+/*     /\* AC *\/ */
+/*     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x14, 0x07, 0x38, 0x39, 0x3A, 0x3B,
+ */
+/*     0x3C, 0x3D, 0x3E, 0x3F, 0x0C, 0x00, 0x0F, 0x08, 0x00}; */
+
+/* void read_regs(unsigned char *regs) { */
+/*     unsigned i; */
+
+/*     /\* read MISCELLANEOUS reg *\/ */
+/*     *regs = inb(VGA_MISC_READ); */
+/*     regs++; */
+/*     /\* read SEQUENCER regs *\/ */
+/*     for (i = 0; i < VGA_NUM_SEQ_REGS; i++) { */
+/*         outb(i, VGA_SEQ_INDEX); */
+/*         *regs = inb(VGA_SEQ_DATA); */
+/*         regs++; */
+/*     } */
+/*     /\* read CRTC regs *\/ */
+/*     for (i = 0; i < VGA_NUM_CRTC_REGS; i++) { */
+/*         outb(i, VGA_CRTC_INDEX); */
+/*         *regs = inb(VGA_CRTC_DATA); */
+/*         regs++; */
+/*     } */
+/*     /\* read GRAPHICS CONTROLLER regs *\/ */
+/*     for (i = 0; i < VGA_NUM_GC_REGS; i++) { */
+/*         outb(i, VGA_GC_INDEX); */
+/*         *regs = inb(VGA_GC_DATA); */
+/*         regs++; */
+/*     } */
+/*     /\* read ATTRIBUTE CONTROLLER regs *\/ */
+/*     for (i = 0; i < VGA_NUM_AC_REGS; i++) { */
+/*         (void)inb(VGA_INSTAT_READ); */
+/*         outb(i, VGA_AC_INDEX); */
+/*         *regs = inb(VGA_AC_READ); */
+/*         regs++; */
+/*     } */
+/*     /\* lock 16-color palette and unblank display *\/ */
+/*     (void)inb(VGA_INSTAT_READ); */
+/*     outb(0x20, VGA_AC_INDEX); */
+/* } */
+
+/* void write_regs(unsigned char *regs) { */
+/*     unsigned i; */
+
+/*     /\* write MISCELLANEOUS reg *\/ */
+/*     outb(*regs, VGA_MISC_WRITE); */
+/*     regs++; */
+/*     /\* write SEQUENCER regs *\/ */
+/*     for (i = 0; i < VGA_NUM_SEQ_REGS; i++) { */
+/*         outb(i, VGA_SEQ_INDEX); */
+/*         outb(*regs, VGA_SEQ_DATA); */
+/*         regs++; */
+/*     } */
+/*     /\* unlock CRTC registers *\/ */
+/*     outb(0x03, VGA_CRTC_INDEX); */
+/*     outb(inb(VGA_CRTC_DATA) | 0x80, VGA_CRTC_DATA); */
+/*     outb(0x11, VGA_CRTC_INDEX); */
+/*     outb(inb(VGA_CRTC_DATA) & ~0x80, VGA_CRTC_DATA); */
+/*     /\* make sure they remain unlocked *\/ */
+/*     regs[0x03] |= 0x80; */
+/*     regs[0x11] &= ~0x80; */
+/*     /\* write CRTC regs *\/ */
+/*     for (i = 0; i < VGA_NUM_CRTC_REGS; i++) { */
+/*         outb(i, VGA_CRTC_INDEX); */
+/*         outb(*regs, VGA_CRTC_DATA); */
+/*         regs++; */
+/*     } */
+/*     /\* write GRAPHICS CONTROLLER regs *\/ */
+/*     for (i = 0; i < VGA_NUM_GC_REGS; i++) { */
+/*         outb(i, VGA_GC_INDEX); */
+/*         outb(*regs, VGA_GC_DATA); */
+/*         regs++; */
+/*     } */
+/*     /\* write ATTRIBUTE CONTROLLER regs *\/ */
+/*     for (i = 0; i < VGA_NUM_AC_REGS; i++) { */
+/*         (void)inb(VGA_INSTAT_READ); */
+/*         outb(i, VGA_AC_INDEX); */
+/*         outb(*regs, VGA_AC_WRITE); */
+/*         regs++; */
+/*     } */
+/*     /\* lock 16-color palette and unblank display *\/ */
+/*     (void)inb(VGA_INSTAT_READ); */
+/*     outb(0x20, VGA_AC_INDEX); */
+/* } */
+
+void enable_cursor() {
+    outb(0x09, VGA_CRTC_INDEX); /* max scan line register */
+    u8 max_scan_line = inb(VGA_CRTC_DATA) & 0x1ff;
+
+    outb(0x0a, VGA_CRTC_INDEX);
+    outb(inb(VGA_CRTC_DATA) | 0, 0x3d5);
+
+    outb(0x0b, VGA_CRTC_INDEX);
+    outb(inb(VGA_CRTC_DATA) | 0x1ff, 0x3d5);
 }
 
 void disable_cursor() {
-	outb(0x0a, 0x3d4);
-	outb(0x20, 0x3d5);
+    outb(0x0a, 0x3d4);
+    outb(0x20, 0x3d5);
 }
-
-void early_vga_init() {
-    enable_cursor(0, 0);
-    /* disable_cursor(); */
-}
-
-void set_vga_base(void *addr) { vga_base = (u16 *)addr; }
 
 // FIXME: col row max value
-void update_cursor(u8 col, u8 row) {
-    u16 pos = row * VGA_WIDTH + col;
+void update_cursor() {
+    if (current_row >= VGA_HEIGHT || current_col >= VGA_WIDTH) {
+        return;
+    }
+    u16 pos = current_row * VGA_WIDTH + current_col;
 
-    outb(0x0f, 0x3d4);
-    outb((u8)(pos & 0xff), 0x3d5);
-    outb(0x0e, 0x3d4);
-    outb((u8)((pos >> 8) & 0xff), 0x3d5);
+    outb(0x0f, VGA_CRTC_INDEX);
+    outb((u8)(pos & 0xff), VGA_CRTC_DATA);
+    outb(0x0e, VGA_CRTC_INDEX);
+    outb((u8)((pos >> 8) & 0xff), VGA_CRTC_DATA);
+}
+
+void enable_vga() {
+    enable_cursor();
+    update_cursor();
+    current_col = 0;
+    current_row = 24;
+    update_cursor();
+    current_row = 0;
 }
 
 u16 *get_vga_ptr(u8 row, u8 col) { return vga_base + VGA_WIDTH * row + col; }
 
+void set_vga_base(void *addr) { vga_base = (u16 *)addr; }
+
 void early_vga_clear_row(u8 row) {
     for (int col = 0; col < VGA_WIDTH; col++) {
-        *get_vga_ptr(row, col) = 0x0;
+        *get_vga_ptr(row, col) = 0x0f00;
     }
 }
 
 void early_vga_scroll() {
     /* scroll 1 line up */
     int j = 0;
-    for (int row = 1; row < VGA_HEIGHT; row++, j++) {
+    for (int row = 1; row <= current_row; row++, j++) {
         for (int col = 0; col < VGA_WIDTH; col++) {
             u16 *cover = get_vga_ptr(row - 1, col);
             u16 *value = get_vga_ptr(row, col);
@@ -56,7 +188,7 @@ void early_vga_scroll() {
         }
     }
 
-    early_vga_clear_row(VGA_HEIGHT - 1);
+    early_vga_clear_row(current_row);
     current_col = 0;
 }
 
@@ -64,22 +196,42 @@ void early_vga_write(const char *str) {
     unsigned int len = strlen(str);
     char c;
     while ((c = *str++) != '\0' && len-- > 0) {
-        if (current_row == VGA_HEIGHT) {
-            early_vga_scroll();
-            current_row--;
-        }
-
         if (c == '\n') {
             current_col = 0;
             current_row++;
+            if (current_row == VGA_HEIGHT) {
+                current_row--;
+                early_vga_scroll();
+            }
         } else if (c != '\r') {
-            *get_vga_ptr(current_row, current_col++) = 0x0f00 | c;
-
+            *get_vga_ptr(current_row, current_col++) |= c;
             if (current_col == VGA_WIDTH) {
                 current_col = 0;
                 current_row++;
             }
         }
+    }
+    update_cursor();
+}
+
+void vga_backspace() {
+    if (current_col == 0) {
+        if (current_row != 0) {
+            current_row--;
+            current_col = VGA_WIDTH - 1;
+        }
+    }
+    current_col--;
+    *get_vga_ptr(current_row, current_col) = 0x0f00;
+    update_cursor();
+}
+
+void early_vga_init() {
+    /* write_regs(g_80x25_text); */
+    enable_vga();
+
+    for (int i = 0; i < VGA_HEIGHT; i++) {
+        early_vga_clear_row(i);
     }
 }
 

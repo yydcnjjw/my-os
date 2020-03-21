@@ -80,6 +80,6 @@ enum pg_level {
 #define EARLY_DYNAMIC_PAGE_TABLES 64
 
 
-#define THREAD_SIZE (PTE_SIZE << 1)
+#define THREAD_SIZE (PTE_SIZE << 2)
 
 #endif /* _X86_ASM_PAGE_TYPES_H */
