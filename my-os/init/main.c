@@ -1,4 +1,5 @@
 #include <asm/apic.h>
+#include <asm/io.h>
 #include <asm/multiboot2/api.h>
 #include <asm/page_types.h>
 #include <asm/processor.h>
@@ -10,9 +11,9 @@
 #include <my-os/mm_types.h>
 #include <my-os/slub_alloc.h>
 
+#include <kernel/keyboard.h>
 #include <kernel/mm.h>
 #include <kernel/printk.h>
-#include <kernel/keyboard.h>
 #include <my-os/disk.h>
 
 #include "../my-lisp/my_lisp.h"
@@ -66,10 +67,7 @@ void fpu_init() {
     printk("%d\n", (int)(a * 10 * 2.1));
 }
 
-void pic_bus() {
-    
-}
-
+extern void pci_bus(void);
 size_t end_pfn;
 void start_kernel(void) {
 
@@ -107,16 +105,13 @@ void start_kernel(void) {
 
     extern void idt_setup(void);
     idt_setup();
-
-
-    /* void *p = kmalloc(64, SLUB_NONE); */
-    /* kfree(p); */
-    /* p = kmalloc(64, SLUB_NONE);    */ 
-    /* smp_init(); */
+    
+    smp_init();
 
     fpu_init();
 
     keyboard_init();
+    pci_bus();
     ata_init();
     if (my_lisp_boot()) {
         printk("my lisp boot error");

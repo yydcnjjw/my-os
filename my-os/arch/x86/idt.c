@@ -6,6 +6,7 @@
 
 #include <kernel/printk.h>
 #include <my-os/types.h>
+#include <my-os/kernel.h>
 
 struct pt_regs {
     /*
@@ -162,8 +163,6 @@ enum {
     X86_TRAP_IRET = 32, /* 32, IRET Exception */
 };
 
-static inline void halt(void) { asm volatile("hlt" : : : "memory"); }
-
 unsigned int early_recursion_flag;
 
 extern void early_fixup_exception(struct pt_regs *regs, int trapnr) {
@@ -183,5 +182,5 @@ extern void early_fixup_exception(struct pt_regs *regs, int trapnr) {
 
 halt_loop:
     while (true)
-        halt();
+        halt("idt error");
 }

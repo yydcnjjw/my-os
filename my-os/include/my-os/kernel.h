@@ -1,5 +1,6 @@
 #ifndef _MY_OS_KERNEL_H
 #define _MY_OS_KERNEL_H
+#include <kernel/printk.h>
 #include <my-os/types.h>
 #include <stddef.h>
 
@@ -27,5 +28,16 @@ static inline __attribute__((const)) bool is_power_of_2(unsigned long n) {
 /* @a is a power of 2 value */
 #define ALIGN(x, a) __ALIGN_KERNEL((x), (a))
 #define IS_ALIGNED(x, a) (((x) & ((typeof(x))(a)-1)) == 0)
+
+static inline void halt(const char *s) {
+    printk(s);
+    asm volatile("hlt" : : : "memory");
+}
+
+#define kassert(cond)                                                          \
+    do {                                                                       \
+        if (!(cond))                                                           \
+            halt(#cond);                                                       \
+    } while (0)
 
 #endif /* _MY_OS_KERNEL_H */

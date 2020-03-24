@@ -58,6 +58,7 @@ mm/slub_alloc.o \
 init/main.o \
 fs/ext2/super.o \
 drivers/ata/disk.o \
+drivers/pci.o \
 my-lisp/strtox.o \
 my-lisp/strtod.o \
 my-lisp/my_lisp.lex.o \
