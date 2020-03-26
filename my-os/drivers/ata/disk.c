@@ -3,6 +3,9 @@
 #include <kernel/printk.h>
 
 #include <my-os/pci.h>
+#include <my-os/string.h>
+
+#include "identify_device_data.h"
 
 #define ATA_SR_BSY 0x80
 #define ATA_SR_DRDY 0x40
@@ -40,18 +43,6 @@
 #define ATAPI_CMD_READ 0xa8
 #define ATAPI_CMD_EJECT 0x1b
 
-#define ATA_IDENT_DEVICETYPE 0
-#define ATA_IDENT_CYLINDERS 2
-#define ATA_IDENT_HEADS 6
-#define ATA_IDENT_SECTORS 12
-#define ATA_IDENT_SERIAL 20
-#define ATA_IDENT_MODEL 54
-#define ATA_IDENT_CAPABILITIES 98
-#define ATA_IDENT_FIELDVALID 106
-#define ATA_IDENT_MAX_LBA 120
-#define ATA_IDENT_COMMANDSETS 164
-#define ATA_IDENT_MAX_LBA_EXT 200
-
 #define ATA_MASTER 0x00
 #define ATA_SLAVE 0x01
 
@@ -84,7 +75,7 @@
 // Directions:
 #define ATA_READ 0x00
 #define ATA_WRITE 0x01
-
+u8 ide_buf[2048] = {0};
 struct channel {
     u16 base;  // I/O Base.
     u16 ctrl;  // Control Base
@@ -92,25 +83,18 @@ struct channel {
     u8 nIEN;   // nIEN (No Interrupt);
 } channels[2];
 
-u8 ide_buf[2048] = {0};
 static u8 ide_irq_invoked = 0;
 static u8 atapi_packet[12] = {0xA8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 struct ide_device {
-    u8 reserved;      // 0 (Empty) or 1 (This Drive really exists).
-    u8 channel;       // 0 (Primary Channel) or 1 (Secondary Channel).
-    u8 drive;         // 0 (Master Drive) or 1 (Slave Drive).
-    u16 type;         // 0: ATA, 1:ATAPI.
-    u16 sign;         // Drive Signature
-    u16 capabilities; // Features.
-    u32 commandsets;  // Command Sets Supported.
-    u64 size;         // Size in Sectors.
-    u8 model[41];     // Model in string.
+    u8 reserved; // 0 (Empty) or 1 (This Drive really exists).
+    u8 channel;  // 0 (Primary Channel) or 1 (Secondary Channel).
+    u8 drive;    // 0 (Master Drive) or 1 (Slave Drive).
+    u16 type;    // 0: ATA, 1:ATAPI.
+    struct identify_device_data ident_device_data;
 } ide_devices[4];
 
 void ide_write(u8 channel, u8 reg, u8 data) {
-    if (reg > 0x07 && reg < 0x0c)
-        ide_write(channel, ATA_REG_CONTROL, 0x80 | channels[channel].nIEN);
     if (reg < 0x08)
         outb(data, channels[channel].base + reg - 0x00);
     else if (reg < 0x0c)
@@ -119,14 +103,10 @@ void ide_write(u8 channel, u8 reg, u8 data) {
         outb(data, channels[channel].ctrl + reg - 0x0a);
     else if (reg < 0x16)
         outb(data, channels[channel].bmide + reg - 0x0e);
-    if (reg > 0x07 && reg < 0x0c)
-        ide_write(channel, ATA_REG_CONTROL, channels[channel].nIEN);
 }
 
 u8 ide_read(u8 channel, u8 reg) {
     u8 result = '\0';
-    if (reg > 0x07 && reg < 0x0c)
-        ide_write(channel, ATA_REG_CONTROL, 0x80 | channels[channel].nIEN);
     if (reg < 0x08)
         result = inb(channels[channel].base + reg - 0x00);
     else if (reg < 0x0c)
@@ -135,26 +115,18 @@ u8 ide_read(u8 channel, u8 reg) {
         result = inb(channels[channel].ctrl + reg - 0x0a);
     else
         result = inb(channels[channel].bmide + reg - 0x0e);
-    if (reg > 0x07 && reg < 0x0c)
-        ide_write(channel, ATA_REG_CONTROL, channels[channel].nIEN);
     return result;
 }
 
 void ide_read_buffer(u8 channel, u8 reg, void *buffer, u32 quads) {
-    if (reg > 0x07 && reg < 0x0c)
-        ide_write(channel, ATA_REG_CONTROL, 0x80 | channels[channel].nIEN);
-    /* asm("pushw %es; movw %ds, %ax; movw %ax, %es"); */
     if (reg < 0x08)
         insl(channels[channel].base + reg - 0x00, buffer, quads);
     else if (reg < 0x0c)
         insl(channels[channel].base + reg - 0x06, buffer, quads);
     else if (reg < 0x0e)
-        insl(channels[channel].ctrl + reg - 0x0A, buffer, quads);
+        insl(channels[channel].ctrl + reg - 0x0a, buffer, quads);
     else if (reg < 0x16)
-        insl(channels[channel].bmide + reg - 0x0E, buffer, quads);
-    /* asm("popw %es;"); */
-    if (reg > 0x07 && reg < 0x0c)
-        ide_write(channel, ATA_REG_CONTROL, channels[channel].nIEN);
+        insl(channels[channel].bmide + reg - 0x0e, buffer, quads);
 }
 
 void ide_init(struct pci_device *ide_device) {
@@ -216,57 +188,55 @@ void ide_init(struct pci_device *ide_device) {
             }
 
             // (V) Read Identification Space of the Device:
-            ide_read_buffer(i, ATA_REG_DATA, ide_buf, 128);
             // (VI) Read Device Parameters:
             ide_devices[count].reserved = 1;
             ide_devices[count].type = type;
             ide_devices[count].channel = i;
             ide_devices[count].drive = j;
-            ide_devices[count].sign =
-                ((u16 *)(ide_buf + ATA_IDENT_DEVICETYPE))[0];
-            ide_devices[count].capabilities =
-                ((u16 *)(ide_buf + ATA_IDENT_CAPABILITIES))[0];
-            ide_devices[count].commandsets =
-                ((u32 *)(ide_buf + ATA_IDENT_COMMANDSETS))[0];
 
-            // (VII) Get Size:
-            if (ide_devices[count].commandsets & (1 << 26)) {
-                // Device uses 48-Bit Addressing:
-                ide_devices[count].size =
-                    *((u64 *)(ide_buf + ATA_IDENT_MAX_LBA_EXT));
-                // Note that Quafios is 32-Bit Operating System, So last 2 Words
-                // are ignored.
-            } else {
-                // Device uses CHS or 28-bit Addressing:
-                ide_devices[count].size =
-                    *((u32 *)(ide_buf + ATA_IDENT_MAX_LBA));
-            }
-
-            // (VIII) String indicates model of device (like Western Digital HDD
-            // and SONY DVD-RW...):
-            for (int k = ATA_IDENT_MODEL; k < (ATA_IDENT_MODEL + 40); k += 2) {
-                ide_devices[count].model[k - ATA_IDENT_MODEL] = ide_buf[k + 1];
-                ide_devices[count].model[(k + 1) - ATA_IDENT_MODEL] =
-                    ide_buf[k];
-            }
-            ide_devices[count].model[40] = 0; // Terminate String.
-
+            ide_read_buffer(i, ATA_REG_DATA, ide_buf, 128);
+            memcpy(&ide_devices[count].ident_device_data, ide_buf,
+                   sizeof(struct identify_device_data));
             count++;
         }
 
     // 4- Print Summary:
+    u8 buf[41] = {0};
     for (int i = 0; i < 4; i++)
         if (ide_devices[i].reserved == 1) {
-            printk("size %d\n", ide_devices[i].size);
+            struct identify_device_data *ident_data =
+                &ide_devices[i].ident_device_data;
+            printk("size %d\n", ident_data->CurrentSectorCapacity);
+
+            u8 *model = ident_data->ModelNumber;
+            for (int i = 0; i < 40; i += 2) {
+                buf[i] = model[i + 1];
+                buf[i + 1] = model[i];
+            }
+
             printk(" Found %s Drive %dMB - %s\n",
                    (const char *[]){"ATA",
                                     "ATAPI"}[ide_devices[i].type], /* Type */
-                   ide_devices[i].size * 512 / 1024 / 1024,          /* Size */
-                   ide_devices[i].model);
+                   ident_data->CurrentSectorCapacity * 512 / 1024 /
+                       1024, /* Size */
+                   buf);
+
+            printk(" LogicalSectorLongerThan256Words %d\n",
+                   ident_data->PhysicalLogicalSectorSize
+                       .LogicalSectorLongerThan256Words);
+            printk(" MultipleLogicalSectorsPerPhysicalSector %d\n",
+                   ident_data->PhysicalLogicalSectorSize
+                       .MultipleLogicalSectorsPerPhysicalSector);
+            printk(" logical sector per physical sector %d\n",
+                   ident_data->PhysicalLogicalSectorSize
+                       .LogicalSectorsPerPhysicalSector);
         }
+    // 5- Enable IRQs:
+    ide_write(ATA_PRIMARY, ATA_REG_CONTROL, 0);
+    ide_write(ATA_SECONDARY, ATA_REG_CONTROL, 0);
 }
 
-u8 ide_polling(u8 channel, u32 advanced_check) {
+u8 ide_polling(u8 channel, bool advanced_check) {
 
     // (I) Delay 400 nanosecond for BSY to be set:
     // -------------------------------------------------
@@ -308,10 +278,13 @@ u8 ide_polling(u8 channel, u32 advanced_check) {
     return 0; // No Error.
 }
 
+enum ata_access_mode { CHS_MODE, LBA28_MODE, LBA48_MODE };
+
 unsigned char ide_ata_access(u8 direction, u8 drive, u32 lba, u8 numsects,
-                             u16 selector, void *addr) {
-    u8 lba_mode /* 0: CHS, 1:LBA28, 2: LBA48 */, dma /* 0: No DMA, 1: DMA */,
-        cmd;
+                             void *addr) {
+    enum ata_access_mode access_mode;
+    bool dma;
+    u8 cmd;
     u8 lba_io[6];
     u8 channel = ide_devices[drive].channel; // Read the Channel.
     u8 slavebit = ide_devices[drive].drive;  // Read the Drive [Master/Slave]
@@ -324,10 +297,11 @@ unsigned char ide_ata_access(u8 direction, u8 drive, u32 lba, u8 numsects,
               channels[channel].nIEN = (ide_irq_invoked = 0x0) + 0x02);
 
     // (I) Select one from LBA28, LBA48 or CHS;
-    if (lba >= 0x10000000) { // Sure Drive should support LBA in this case, or
-                             // you are giving a wrong LBA.
-        // LBA48:
-        lba_mode = 2;
+    if (ide_devices[drive]
+            .ident_device_data.CommandSetSupport
+            .BigLba) { // Sure Drive should support LBA in this case, or
+                       // you are giving a wrong LBA.
+        access_mode = LBA48_MODE;
         lba_io[0] = (lba & 0x000000ff) >> 0;
         lba_io[1] = (lba & 0x0000ff00) >> 8;
         lba_io[2] = (lba & 0x00ff0000) >> 16;
@@ -337,9 +311,10 @@ unsigned char ide_ata_access(u8 direction, u8 drive, u32 lba, u8 numsects,
         lba_io[5] = 0; // We said that we lba is integer, so 32-bit are enough
                        // to access 2TB.
         head = 0;      // Lower 4-bits of HDDEVSEL are not used here.
-    } else if (ide_devices[drive].capabilities & 0x200) { // Drive supports LBA?
-        // LBA28:
-        lba_mode = 1;
+    } else if (ide_devices[drive]
+                   .ident_device_data.Capabilities
+                   .LbaSupported) { // Drive supports LBA?
+        access_mode = LBA28_MODE;
         lba_io[0] = (lba & 0x00000ff) >> 0;
         lba_io[1] = (lba & 0x000ff00) >> 8;
         lba_io[2] = (lba & 0x0ff0000) >> 16;
@@ -348,8 +323,7 @@ unsigned char ide_ata_access(u8 direction, u8 drive, u32 lba, u8 numsects,
         lba_io[5] = 0; // These Registers are not used here.
         head = (lba & 0xF000000) >> 24;
     } else {
-        // CHS:
-        lba_mode = 0;
+        access_mode = CHS_MODE;
         sect = (lba % 63) + 1;
         cyl = (lba + 1 - sect) / (16 * 63);
         lba_io[0] = sect;
@@ -370,7 +344,7 @@ unsigned char ide_ata_access(u8 direction, u8 drive, u32 lba, u8 numsects,
         ; // Wait if Busy.
 
     // (IV) Select Drive from the controller;
-    if (lba_mode == 0)
+    if (access_mode == CHS_MODE)
         ide_write(channel, ATA_REG_HDDEVSEL,
                   0xa0 | (slavebit << 4) | head); // Select Drive CHS.
     else
@@ -378,7 +352,7 @@ unsigned char ide_ata_access(u8 direction, u8 drive, u32 lba, u8 numsects,
                   0xe0 | (slavebit << 4) | head); // Select Drive LBA.
 
     // (V) Write Parameters;
-    if (lba_mode == 2) {
+    if (access_mode == LBA48_MODE) {
         ide_write(channel, ATA_REG_SECCOUNT1, 0);
         ide_write(channel, ATA_REG_LBA3, lba_io[3]);
         ide_write(channel, ATA_REG_LBA4, lba_io[4]);
@@ -398,30 +372,30 @@ unsigned char ide_ata_access(u8 direction, u8 drive, u32 lba, u8 numsects,
     // If (!DMA & LBA28)   DO_PIO_LBA;
     // If (!DMA & !LBA#)   DO_PIO_CHS;
 
-    if (lba_mode == 0 && dma == 0 && direction == 0)
+    if (access_mode == CHS_MODE && dma == 0 && direction == 0)
         cmd = ATA_CMD_READ_PIO;
-    if (lba_mode == 1 && dma == 0 && direction == 0)
+    if (access_mode == LBA28_MODE && dma == 0 && direction == 0)
         cmd = ATA_CMD_READ_PIO;
-    if (lba_mode == 2 && dma == 0 && direction == 0)
+    if (access_mode == LBA48_MODE && dma == 0 && direction == 0)
         cmd = ATA_CMD_READ_PIO_EXT;
-    if (lba_mode == 0 && dma == 1 && direction == 0)
+    if (access_mode == CHS_MODE && dma == 1 && direction == 0)
         cmd = ATA_CMD_READ_DMA;
-    if (lba_mode == 1 && dma == 1 && direction == 0)
+    if (access_mode == LBA28_MODE && dma == 1 && direction == 0)
         cmd = ATA_CMD_READ_DMA;
-    if (lba_mode == 2 && dma == 1 && direction == 0)
+    if (access_mode == LBA48_MODE && dma == 1 && direction == 0)
         cmd = ATA_CMD_READ_DMA_EXT;
 
-    if (lba_mode == 0 && dma == 0 && direction == 1)
+    if (access_mode == CHS_MODE && dma == 0 && direction == 1)
         cmd = ATA_CMD_WRITE_PIO;
-    if (lba_mode == 1 && dma == 0 && direction == 1)
+    if (access_mode == LBA28_MODE && dma == 0 && direction == 1)
         cmd = ATA_CMD_WRITE_PIO;
-    if (lba_mode == 2 && dma == 0 && direction == 1)
+    if (access_mode == LBA48_MODE && dma == 0 && direction == 1)
         cmd = ATA_CMD_WRITE_PIO_EXT;
-    if (lba_mode == 0 && dma == 1 && direction == 1)
+    if (access_mode == CHS_MODE && dma == 1 && direction == 1)
         cmd = ATA_CMD_WRITE_DMA;
-    if (lba_mode == 1 && dma == 1 && direction == 1)
+    if (access_mode == LBA28_MODE && dma == 1 && direction == 1)
         cmd = ATA_CMD_WRITE_DMA;
-    if (lba_mode == 2 && dma == 1 && direction == 1)
+    if (access_mode == LBA48_MODE && dma == 1 && direction == 1)
         cmd = ATA_CMD_WRITE_DMA_EXT;
     ide_write(channel, ATA_REG_COMMAND, cmd); // Send the Command.
 
@@ -448,7 +422,7 @@ unsigned char ide_ata_access(u8 direction, u8 drive, u32 lba, u8 numsects,
         }
         ide_write(channel, ATA_REG_COMMAND,
                   (char[]){ATA_CMD_CACHE_FLUSH, ATA_CMD_CACHE_FLUSH,
-                           ATA_CMD_CACHE_FLUSH_EXT}[lba_mode]);
+                           ATA_CMD_CACHE_FLUSH_EXT}[access_mode]);
         ide_polling(channel, 0); // Polling.
     }
 
@@ -505,10 +479,9 @@ u8 ide_print_error(u32 drive, u8 err) {
         printk("- Write Protected\n     ");
         err = 8;
     }
-    printk("- [%s %s] %s\n",
+    printk("- [%s %s] \n",
            (const char *[]){"Primary", "Secondary"}[ide_devices[drive].channel],
-           (const char *[]){"Master", "Slave"}[ide_devices[drive].drive],
-           ide_devices[drive].model);
+           (const char *[]){"Master", "Slave"}[ide_devices[drive].drive]);
 
     return err;
 }
@@ -521,8 +494,7 @@ void ide_wait_irq() {
 
 void ide_irq() { ide_irq_invoked = 1; }
 
-unsigned char ide_atapi_read(u8 drive, u32 lba,
-                             unsigned char numsects, unsigned short selector,
+unsigned char ide_atapi_read(u8 drive, u32 lba, unsigned char numsects,
                              void *addr) {
     u8 channel = ide_devices[drive].channel;
     u8 slavebit = ide_devices[drive].drive;
@@ -606,8 +578,7 @@ unsigned char ide_atapi_read(u8 drive, u32 lba,
     return 0; // Easy, ... Isn't it?
 }
 
-void ide_read_sectors(unsigned char drive, unsigned char numsects,
-                      unsigned int lba, unsigned short es, void *addr) {
+void ide_read_sectors(u8 drive, u8 numsects, u32 lba, void *addr) {
 
     u8 err = 0;
     // 1: Check if the drive presents:
@@ -617,7 +588,8 @@ void ide_read_sectors(unsigned char drive, unsigned char numsects,
 
     // 2: Check if inputs are valid:
     // ==================================
-    else if (((lba + numsects) > ide_devices[drive].size) &&
+    else if (((lba + numsects) >
+              ide_devices[drive].ident_device_data.CurrentSectorCapacity) &&
              (ide_devices[drive].type == IDE_ATA))
         err = 0x2; // Seeking to invalid position.
 
@@ -625,17 +597,18 @@ void ide_read_sectors(unsigned char drive, unsigned char numsects,
     // ============================================
     else {
         if (ide_devices[drive].type == IDE_ATA)
-            err = ide_ata_access(ATA_READ, drive, lba, numsects, es, addr);
+            err = ide_ata_access(ATA_READ, drive, lba, numsects, addr);
         else if (ide_devices[drive].type == IDE_ATAPI)
             for (size_t i = 0; i < numsects; i++)
-                err = ide_atapi_read(drive, lba + i, 1, es, addr + (i * 2048));
+                err = ide_atapi_read(drive, lba + i, 1, addr + (i * 2048));
         err = ide_print_error(drive, err);
     }
 }
-// package[0] is an entry of array, this entry specifies the Error Code, you can
-// replace that.
+/* package[0] is an entry of array, this entry specifies the Error Code, you can
+ */
+/* replace that. */
 void ide_write_sectors(unsigned char drive, unsigned char numsects,
-                       unsigned int lba, unsigned short es, void *addr) {
+                       unsigned int lba, void *addr) {
 
     u8 err = 0;
     // 1: Check if the drive presents:
@@ -644,14 +617,15 @@ void ide_write_sectors(unsigned char drive, unsigned char numsects,
         err = 0x1; // Drive Not Found!
     // 2: Check if inputs are valid:
     // ==================================
-    else if (((lba + numsects) > ide_devices[drive].size) &&
+    else if (((lba + numsects) >
+              ide_devices[drive].ident_device_data.CurrentSectorCapacity) &&
              (ide_devices[drive].type == IDE_ATA))
         err = 0x2; // Seeking to invalid position.
     // 3: Read in PIO Mode through Polling & IRQs:
     // ============================================
     else {
         if (ide_devices[drive].type == IDE_ATA)
-            err = ide_ata_access(ATA_WRITE, drive, lba, numsects, es, addr);
+            err = ide_ata_access(ATA_WRITE, drive, lba, numsects, addr);
         else if (ide_devices[drive].type == IDE_ATAPI)
             err = 4; // Write-Protected.
         err = ide_print_error(drive, err);
@@ -681,6 +655,15 @@ void ata_init() {
     }
 
     ide_init(pci_device);
+
+    char buf[513] = {0};
+    ide_read_sectors(0, 1, 0, buf);
+    for (int i = 0; i < 5; ++i) {
+        for (int j = 0; j < 10; ++j) {
+            printk("%x ", (u8)buf[i * 10 + j]);
+        }
+        printk("\n");
+    }
 }
 
 void do_ata(struct pt_regs *regs) {}
