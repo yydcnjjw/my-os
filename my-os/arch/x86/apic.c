@@ -73,18 +73,12 @@ void wrioapic(u8 index, u32 value) {
 }
 
 void ioapic_init(void) {
-#define IOAPIC_ID_INDEX 0x00
-#define IOAPIC_VERSION_INDEX 0x01
+
     u32 ioapic_id = rdioapic(IOAPIC_ID_INDEX);
     printk("%#x\n", ioapic_id);
     u32 ioapic_version = rdioapic(IOAPIC_VERSION_INDEX);
     printk("%#x\n", ioapic_version);
 
-#define IOAPIC_RTE_BASE_INDEX 0x10
-#define IOAPIC_RTE_END_INDEX 0x40
-
-#define IOAPIC_RTE_KEYBOARD (IOAPIC_RTE_BASE_INDEX + 2)
-    
     for (int i = IOAPIC_RTE_BASE_INDEX; i < IOAPIC_RTE_END_INDEX; i += 2) {
         // ignore all
         wrioapicl(i, 0x10020 + ((i - 0x10) >> 1));
@@ -92,6 +86,8 @@ void ioapic_init(void) {
 
     // enable keyboard
     wrioapicl(IOAPIC_RTE_KEYBOARD, 0x21);
+    // enable hpet
+    /* wrioapicl(IOAPIC_RTE_HPET, 0x22); */
 }
 
 void local_apic_init(void) {

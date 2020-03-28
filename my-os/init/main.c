@@ -5,6 +5,7 @@
 #include <asm/processor.h>
 #include <asm/sections.h>
 #include <asm/smp.h>
+#include <asm/acpi.h>
 
 #include <my-os/buddy_alloc.h>
 #include <my-os/memblock.h>
@@ -112,10 +113,11 @@ void start_kernel(void) {
 
     keyboard_init();
     pci_bus();
-    ata_init();
-    if (my_lisp_boot()) {
-        printk("my lisp boot error");
-    }
+    acpi_init();
+    /* ata_init(); */
+    /* if (my_lisp_boot()) { */
+        /* printk("my lisp boot error"); */
+    /* } */
 
     for (;;)
         ;

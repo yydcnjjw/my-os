@@ -1,7 +1,9 @@
+#include <asm/acpi.h>
 #include <asm/multiboot2/api.h>
 #include <asm/page_types.h>
 #include <kernel/printk.h>
 #include <my-os/memblock.h>
+#include <my-os/string.h>
 
 static struct multiboot_tag_mmap *mmap_tag;
 
@@ -115,6 +117,20 @@ int parse_multiboot2(void *addr, u64 magic) {
             print_memory_map();
             break;
         }
+        case MULTIBOOT_TAG_TYPE_ACPI_OLD: {
+            struct multiboot_tag_old_acpi *old_acpi_tag =
+                (struct multiboot_tag_old_acpi *)tag;
+            struct RSDPDescriptor rsdp;
+            memcpy(&rsdp, old_acpi_tag->rsdp, sizeof(struct RSDPDescriptor));
+            rsdt = (void *)(phys_addr_t)rsdp.rsdt_address;
+            break;
+        }
+        case MULTIBOOT_TAG_TYPE_ACPI_NEW: {
+            struct multiboot_tag_new_acpi *new_acpi_tag =
+                (struct multiboot_tag_new_acpi *)tag;
+            printk("new acpi tag size %d\n", new_acpi_tag->size);
+            break;
+        }
         }
 
         tag = (void *)tag + align(tag->size, 8);
@@ -123,7 +139,7 @@ int parse_multiboot2(void *addr, u64 magic) {
 }
 
 void multiboot2_memblock_setup(void) {
-    multiboot_memory_map_t *mmap;    
+    multiboot_memory_map_t *mmap;
     for_each_mmap_entries(mmap) {
         if (MULTIBOOT_MEMORY_AVAILABLE == mmap->type) {
             memblock_add(mmap->addr, mmap->len);

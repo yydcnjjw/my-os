@@ -1,13 +1,11 @@
 #include <asm/io.h>
 #include <asm/page.h>
 #include <asm/idt.h>
+#include <asm/apic.h>
 
 #include <kernel/printk.h>
 #include <my-os/slub_alloc.h>
 #include <my-os/types.h>
-
-#define LAPIC_DEFAULT_BASE 0xfee00000
-#define EOI_REG_OFFSET 0xb0
 
 struct pt_regs;
 

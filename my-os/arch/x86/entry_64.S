@@ -46,4 +46,5 @@
 .endm
 
 idt_handler int33 do_keyboard
+idt_handler int34 do_timer
 idt_handler int2f do_ata

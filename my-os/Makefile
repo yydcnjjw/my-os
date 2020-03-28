@@ -50,6 +50,8 @@ $(ARCHDIR)/boot.o \
 $(ARCHDIR)/mm.o \
 $(ARCHDIR)/smp.o \
 $(ARCHDIR)/smp_boot.o \
+$(ARCHDIR)/hpet.o \
+$(ARCHDIR)/acpi.o \
 lib/string.o \
 mm/memblock.o \
 mm/stack_alloc.o \
