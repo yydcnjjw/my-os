@@ -6,16 +6,18 @@
 #include <asm/sections.h>
 #include <asm/smp.h>
 #include <asm/acpi.h>
+#include <asm/idt.h>
+#include <asm/irq.h>
 
 #include <my-os/buddy_alloc.h>
 #include <my-os/memblock.h>
 #include <my-os/mm_types.h>
 #include <my-os/slub_alloc.h>
+#include <my-os/disk.h>
 
 #include <kernel/keyboard.h>
 #include <kernel/mm.h>
 #include <kernel/printk.h>
-#include <my-os/disk.h>
 
 #include "../my-lisp/my_lisp.h"
 
@@ -70,6 +72,12 @@ void fpu_init() {
 
 extern void pci_bus(void);
 size_t end_pfn;
+
+irqreturn_t do_timer(int irq, void *dev_id) {
+
+    return IRQ_NONE;
+}
+
 void start_kernel(void) {
 
     printk("lma end %p\n", (unsigned long)KERNEL_LMA_END);
@@ -104,20 +112,33 @@ void start_kernel(void) {
 
     local_apic_init();
 
-    extern void idt_setup(void);
     idt_setup();
     
     smp_init();
 
     fpu_init();
 
+    init_IRQ();
+    
     keyboard_init();
     pci_bus();
+    
     acpi_init();
-    /* ata_init(); */
-    /* if (my_lisp_boot()) { */
-        /* printk("my lisp boot error"); */
-    /* } */
+    ata_init();
+
+
+    irq_set_handler(2, handle_simple_irq, "timer");
+
+
+    struct irq_action *action = kmalloc(sizeof(struct irq_action), SLUB_NONE);
+    action->name = "timer";
+    action->handler = do_timer;
+    
+    setup_irq(2, action);
+    
+    if (my_lisp_boot()) {
+        printk("my lisp boot error");
+    }
 
     for (;;)
         ;

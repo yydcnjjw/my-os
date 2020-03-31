@@ -16,6 +16,10 @@
 #define IOAPIC_RTE_HPET (IOAPIC_RTE_BASE_INDEX + 4)
 
 #define EOI_REG_OFFSET 0xb0
+
+
 void local_apic_init(void);
-void wrioapicl(u8 index, u64 value);
+
+void apic_eoi(void);
+
 #endif /* X86_ASM_APIC_H */

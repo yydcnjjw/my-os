@@ -633,7 +633,7 @@ void ide_write_sectors(unsigned char drive, unsigned char numsects,
 }
 extern void int2f(void);
 void ata_init() {
-    irq_set_handler(0x2f, int2f);
+    /* irq_set_handler(0x2f, int2f); */
     struct pci_device *pci_device;
     list_for_each_entry(pci_device, &pci_devices, list) {
         if (pci_device->config.class_code == 1 &&

@@ -64,6 +64,40 @@ struct HPET_timer_conf_cap_reg {
     u32 tn_int_route_cap;
 } __attribute__((packed));
 
+void hpet_init(struct HPET *hpet) {
+    printk("addr %p\n", hpet->address.base_addr);
+
+    void *base_addr = __va(hpet->address.base_addr);
+
+    u64 *reg;
+    reg = base_addr + HPET_REG_GENERAL_CAP_ID;
+    struct HPET_general_cap_id_reg cap_reg =
+        *(struct HPET_general_cap_id_reg *)reg;
+
+    u32 COUNTER_CLK_PERIOD = cap_reg.counter_clk_preiod;
+    printk("counter clk period %d\n", COUNTER_CLK_PERIOD);
+
+    reg = base_addr + HPET_REG_N_TIMER_CNF_CAP(0);
+    struct HPET_timer_conf_cap_reg cnf_reg =
+        *(struct HPET_timer_conf_cap_reg *)reg;
+
+    cnf_reg.tn_int_enb_cnf = 1;
+    cnf_reg.tn_type_cnf = 1;
+    cnf_reg.tn_val_set_cnf = 1;
+    cnf_reg.tn_int_route_cnf = cnf_reg.tn_int_route_cap;
+    *reg = *(u64 *)&cnf_reg;
+
+    reg = base_addr + HPET_REG_N_TIMER_COMP_VAL(0);
+    u32 freq = 1e15 / COUNTER_CLK_PERIOD;
+    printk("freq %d\n", freq);
+    *reg = freq;
+
+    reg = base_addr + HPET_REG_GENERAL_CNF;
+#define ENABLE_CNF_BIT 0
+#define LEG_RT_CNF_BIT 1
+    *reg = 1 << LEG_RT_CNF_BIT | 1 << ENABLE_CNF_BIT;
+}
+
 void acpi_init() {
     printk("rsdt addr %p\n", rsdt);
     rsdt = __va(rsdt);
@@ -75,48 +109,7 @@ void acpi_init() {
         memcpy(buf, sdt->signature, 4);
         printk("sdt %s\n", buf);
         if (!memcmp(sdt->signature, "HPET", 4)) {
-            struct HPET *hpet = (struct HPET *)sdt;
-            printk("addr %p\n", hpet->address.base_addr);
-
-            void *base_addr = __va(hpet->address.base_addr);
-
-            u64 *reg;
-            reg = base_addr + HPET_REG_GENERAL_CAP_ID;
-            struct HPET_general_cap_id_reg cap_reg =
-                *(struct HPET_general_cap_id_reg *)reg;
-
-            u32 COUNTER_CLK_PERIOD = cap_reg.counter_clk_preiod;
-            printk("counter clk period %d\n", COUNTER_CLK_PERIOD);
-
-            reg = base_addr + HPET_REG_N_TIMER_CNF_CAP(0);
-            struct HPET_timer_conf_cap_reg cnf_reg =
-                *(struct HPET_timer_conf_cap_reg *)reg;
-
-            cnf_reg.tn_int_enb_cnf = 1;
-            cnf_reg.tn_type_cnf = 1;
-            cnf_reg.tn_val_set_cnf = 1;
-            cnf_reg.tn_int_route_cnf = cnf_reg.tn_int_route_cap;
-            *reg = *(u64 *)&cnf_reg;
-
-            reg = base_addr + HPET_REG_N_TIMER_COMP_VAL(0);
-            u32 freq = 1e15 / COUNTER_CLK_PERIOD;
-            printk("freq %d\n", freq);
-            *reg = freq;
-
-            reg = base_addr + HPET_REG_GENERAL_CNF;
-#define ENABLE_CNF_BIT 0
-#define LEG_RT_CNF_BIT 1
-            *reg = 1 << LEG_RT_CNF_BIT | 1 << ENABLE_CNF_BIT;
-
-            extern void int34(void);
-            irq_set_handler(0x22, int34);
-            wrioapicl(IOAPIC_RTE_HPET, 0x22);
+            hpet_init((struct HPET *)sdt);
         }
     }
-}
-
-void do_timer(struct pt_regs *regs) {
-    printk("timer\n");
-    u32 *eoi = __va(LAPIC_DEFAULT_BASE + EOI_REG_OFFSET);
-    *eoi = 0;
 }

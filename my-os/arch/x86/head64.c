@@ -4,6 +4,7 @@
 #include <asm/page.h>
 #include <asm/pgtable.h>
 #include <asm/processor.h>
+#include <asm/idt.h>
 
 #include <kernel/mm.h>
 #include <kernel/printk.h>
@@ -15,10 +16,6 @@
 
 // TODO: remove
 union thread_union init_thread_union;
-
-static inline void irq_disable(void) { asm volatile("cli" : : : "memory"); }
-
-static inline void irq_enable(void) { asm volatile("sti" : : : "memory"); }
 
 #define PIC1 0x20 /* IO base address for master PIC */
 #define PIC2 0xA0 /* IO base address for slave PIC */

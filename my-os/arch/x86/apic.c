@@ -87,7 +87,7 @@ void ioapic_init(void) {
     // enable keyboard
     wrioapicl(IOAPIC_RTE_KEYBOARD, 0x21);
     // enable hpet
-    /* wrioapicl(IOAPIC_RTE_HPET, 0x22); */
+    wrioapicl(IOAPIC_RTE_HPET, 0x22);
 }
 
 void local_apic_init(void) {
@@ -104,4 +104,9 @@ void local_apic_init(void) {
     /* wrmsrl(MSR_X2APIC_SIVR, sivr); */
 
     ioapic_init();
+}
+
+void apic_eoi(void) {
+    u32 *eoi = __va(LAPIC_DEFAULT_BASE + EOI_REG_OFFSET);
+    *eoi = 0;
 }

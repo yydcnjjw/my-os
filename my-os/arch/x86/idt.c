@@ -1,47 +1,15 @@
 #include <asm/desc.h>
+#include <asm/idt.h>
 #include <asm/io.h>
+#include <asm/irq.h>
 #include <asm/msr.h>
 #include <asm/page.h>
 #include <asm/segment.h>
 
 #include <kernel/printk.h>
-#include <my-os/types.h>
 #include <my-os/kernel.h>
-
-struct pt_regs {
-    /*
-     * C ABI says these regs are callee-preserved. They aren't saved on kernel
-     * entry unless syscall needs a complete, fully filled "struct pt_regs".
-     */
-    unsigned long r15;
-    unsigned long r14;
-    unsigned long r13;
-    unsigned long r12;
-    unsigned long bp;
-    unsigned long bx;
-    /* These regs are callee-clobbered. Always saved on kernel entry. */
-    unsigned long r11;
-    unsigned long r10;
-    unsigned long r9;
-    unsigned long r8;
-    unsigned long ax;
-    unsigned long cx;
-    unsigned long dx;
-    unsigned long si;
-    unsigned long di;
-    /*
-     * On syscall entry, this is syscall#. On CPU exception, this is error code.
-     * On hw interrupt, it's IRQ number:
-     */
-    unsigned long orig_ax;
-    /* Return frame for iretq */
-    unsigned long ip;
-    unsigned long cs;
-    unsigned long flags;
-    unsigned long sp;
-    unsigned long ss;
-    /* top of stack page */
-};
+#include <my-os/string.h>
+#include <my-os/types.h>
 
 struct idt_data {
     unsigned int vector;
@@ -80,7 +48,7 @@ struct idt_data {
 #define TSKG(_vector, _gdt)                                                    \
     G(_vector, NULL, DEFAULT_STACK, GATE_TASK, DPL0, _gdt << 3)
 
-gate_desc IDT[IDT_ENTRIES];
+gate_desc idt_table[IDT_ENTRIES];
 
 /* struct desc_ptr idt_ptr = { */
 /*     .size = (NUM_EXCEPTION_VECTORS * 2 * sizeof(unsigned long)) - 1, */
@@ -88,7 +56,7 @@ gate_desc IDT[IDT_ENTRIES];
 
 struct desc_ptr idt_ptr = {.size =
                                (IDT_ENTRIES * 2 * sizeof(unsigned long)) - 1,
-                           .address = (unsigned long)IDT};
+                           .address = (unsigned long)idt_table};
 
 extern const char early_idt_handler_array[NUM_EXCEPTION_VECTORS]
                                          [EARLY_IDT_HANDLER_SIZE];
@@ -97,38 +65,66 @@ static inline void load_idt(const struct desc_ptr *dtr) {
     asm volatile("lidt %0" ::"m"(*dtr));
 }
 
+static inline void idt_init_desc(gate_desc *gate, const struct idt_data *d) {
+    unsigned long addr = (unsigned long)d->addr;
+    gate->offset_low = (u16)addr;
+    gate->segment = (u16)d->segment;
+    gate->bits = d->bits;
+    gate->offset_middle = (u16)(addr >> 16);
+    gate->offset_high = (u32)(addr >> 32);
+    gate->reserved = 0;
+}
+
+static void idt_setup_from_table(gate_desc *idt, const struct idt_data *t,
+                                 int size) {
+    gate_desc desc;
+
+    for (; size > 0; t++, size--) {
+        idt_init_desc(&desc, t);
+        memcpy(&idt[t->vector], &desc, sizeof(desc));
+    }
+}
+
+static void set_intr_gate(unsigned int n, const void *addr) {
+    struct idt_data data = INTG(n, addr);
+    idt_setup_from_table(idt_table, &data, 1);
+}
+
 void early_init_idt() {
     for (int i = 0; i < NUM_EXCEPTION_VECTORS; i++) {
-        unsigned long irq_addr = (unsigned long)early_idt_handler_array[i];
-        gate_desc *idt_e = IDT + i;
-        idt_e->offset_low = (u16)irq_addr;
-        idt_e->segment = (u16)__KERNEL_CS;
-        idt_e->bits.type = GATE_INTERRUPT;
-        idt_e->bits.p = 1;
-        idt_e->offset_middle = (u32)(irq_addr >> 16);
-        idt_e->offset_high = (u32)(irq_addr >> 32);
-        idt_e->reserved = 0;
+        phys_addr_t irq_addr = (phys_addr_t)early_idt_handler_array[i];
+        set_intr_gate(i, (void *)irq_addr);
+        /* gate_desc *idt_e = idt_table + i; */
+        /* idt_e->offset_low = (u16)irq_addr; */
+        /* idt_e->segment = (u16)__KERNEL_CS; */
+        /* idt_e->bits.type = GATE_INTERRUPT; */
+        /* idt_e->bits.p = 1; */
+        /* idt_e->offset_middle = (u32)(irq_addr >> 16); */
+        /* idt_e->offset_high = (u32)(irq_addr >> 32); */
+        /* idt_e->reserved = 0; */
     }
 
     load_idt(&idt_ptr);
 }
 
-typedef void (*irq_handler_t)(void);
-void irq_set_handler(u32 irq, irq_handler_t handle) {
-    gate_desc *idt_e = IDT + irq;
-    unsigned long irq_addr = (unsigned long)handle;
-    idt_e->offset_low = (u16)irq_addr;
-    idt_e->segment = (u16)__KERNEL_CS;
-    idt_e->bits.type = GATE_INTERRUPT;
-    idt_e->bits.p = 1;
-    idt_e->offset_middle = (u32)(irq_addr >> 16);
-    idt_e->offset_high = (u32)(irq_addr >> 32);
-    idt_e->reserved = 0;
-}
-
+/* typedef void (*irq_handler_t)(void); */
+/* void irq_set_handler(u32 irq, irq_handler_t handle) { */
+/*     gate_desc *idt_e = idt_table + irq; */
+/*     unsigned long irq_addr = (unsigned long)handle; */
+/*     idt_e->offset_low = (u16)irq_addr; */
+/*     idt_e->segment = (u16)__KERNEL_CS; */
+/*     idt_e->bits.type = GATE_INTERRUPT; */
+/*     idt_e->bits.p = 1; */
+/*     idt_e->offset_middle = (u32)(irq_addr >> 16); */
+/*     idt_e->offset_high = (u32)(irq_addr >> 32); */
+/*     idt_e->reserved = 0; */
+/* } */
+extern char irq_entries_start[IRQ_VECTORS][IRQ_ENTRIES_START_SIZE];
 void idt_setup(void) {
+    for (int i = FIRST_EXTERNAL_VECTOR; i < NR_VECTORS; ++i) {
+        set_intr_gate(i, (void *)irq_entries_start[i - FIRST_EXTERNAL_VECTOR]);
+    }
 }
-
 
 static void print_idt(int vector_num, struct pt_regs *regs) {
     printk("idt handler:\n");

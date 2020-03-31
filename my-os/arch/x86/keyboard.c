@@ -1,7 +1,8 @@
-#include <asm/io.h>
-#include <asm/page.h>
-#include <asm/idt.h>
 #include <asm/apic.h>
+#include <asm/idt.h>
+#include <asm/io.h>
+#include <asm/irq.h>
+#include <asm/page.h>
 
 #include <kernel/printk.h>
 #include <my-os/slub_alloc.h>
@@ -176,8 +177,24 @@ bool is_keyboard_init = false;
 
 extern void int33(void);
 
+irqreturn_t do_keyboard(int irq, void *dev_id) {
+    u8 x = inb(0x60);
+
+    if (is_keyboard_init) {
+        if (keyboard.head == keyboard.buf + keyboard.buf_size) {
+            keyboard.head = keyboard.buf;
+        }
+        *keyboard.head++ = x;
+        ++keyboard.count;
+    }
+    return IRQ_NONE;
+}
+
+struct irq_action keyboard_action = {.name = "keyboard",
+                                     .handler = do_keyboard};
+
 void keyboard_init(void) {
-    irq_set_handler(0x21, int33);
+    /* irq_set_handler(0x21, int33); */
     keyboard.buf_size = 128;
     void *p = kmalloc(keyboard.buf_size, SLUB_NONE);
     if (!p) {
@@ -190,6 +207,9 @@ void keyboard_init(void) {
     keyboard.tail = p;
     keyboard.shift_l = false;
     is_keyboard_init = true;
+
+    irq_set_handler(1, handle_simple_irq, "i8042");
+    setup_irq(1, &keyboard_action);
 }
 
 unsigned char get_scancode() {
@@ -232,19 +252,4 @@ int get_charcode(char *ch) {
         return 0;
     }
     return 0;
-}
-
-void do_keyboard(struct pt_regs *regs) {
-    u8 x = inb(0x60);
-
-    if (is_keyboard_init) {
-        if (keyboard.head == keyboard.buf + keyboard.buf_size) {
-            keyboard.head = keyboard.buf;
-        }
-        *keyboard.head++ = x;
-        ++keyboard.count;
-    }
-
-    u32 *eoi = __va(LAPIC_DEFAULT_BASE + EOI_REG_OFFSET);
-    *eoi = 0;
 }
