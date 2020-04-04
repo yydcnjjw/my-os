@@ -1,19 +1,21 @@
+#include <asm/acpi.h>
 #include <asm/apic.h>
+#include <asm/idt.h>
 #include <asm/io.h>
+#include <asm/irq.h>
 #include <asm/multiboot2/api.h>
 #include <asm/page_types.h>
 #include <asm/processor.h>
 #include <asm/sections.h>
 #include <asm/smp.h>
-#include <asm/acpi.h>
-#include <asm/idt.h>
-#include <asm/irq.h>
 
 #include <my-os/buddy_alloc.h>
+#include <my-os/disk.h>
 #include <my-os/memblock.h>
 #include <my-os/mm_types.h>
+#include <my-os/rbtree.h>
 #include <my-os/slub_alloc.h>
-#include <my-os/disk.h>
+#include <my-os/task.h>
 
 #include <kernel/keyboard.h>
 #include <kernel/mm.h>
@@ -24,15 +26,6 @@
 #define CPUID_FEAT_EDX_FPU 0
 #define CPUID_FEAT_EDX_MMX 23
 #define CPUID_FEAT_EDX_FXSR 24
-
-#define __AC(X, Y) (X##Y)
-#define _AC(X, Y) __AC(X, Y)
-#define _AT(T, X) ((T)(X))
-
-#define _UL(x) (_AC(x, UL))
-#define _ULL(x) (_AC(x, ULL))
-#define _BITUL(x) (_UL(1) << (x))
-#define _BITULL(x) (_ULL(1) << (x))
 
 #define X86_CR0_EM_BIT 2 /* Emulation */
 #define X86_CR0_EM _BITUL(X86_CR0_EM_BIT)
@@ -73,26 +66,9 @@ void fpu_init() {
 extern void pci_bus(void);
 size_t end_pfn;
 
-irqreturn_t do_timer(int irq, void *dev_id) {
-
-    return IRQ_NONE;
-}
-
 void start_kernel(void) {
 
     printk("lma end %p\n", (unsigned long)KERNEL_LMA_END);
-
-    init_mm.start_code = (unsigned long)_text;
-    init_mm.end_code = (unsigned long)_etext;
-    init_mm.start_data = (unsigned long)_data;
-    init_mm.end_data = (unsigned long)_edata;
-    init_mm.start_brk = (unsigned long)_brk_base;
-
-    printk("start code = %p\n", init_mm.start_code);
-    printk("end code = %p\n", init_mm.end_code);
-    printk("start data = %p\n", init_mm.start_data);
-    printk("end data = %p\n", init_mm.end_data);
-    printk("start brk = %p\n", init_mm.start_brk);
 
     memblock_init();
     early_alloc_pgt_buf();
@@ -113,29 +89,24 @@ void start_kernel(void) {
     local_apic_init();
 
     idt_setup();
-    
+
     smp_init();
 
     fpu_init();
 
     init_IRQ();
-    
+
     keyboard_init();
     pci_bus();
     
+    schedule_irq_init();
+    
     acpi_init();
     ata_init();
+   
+    schedule_init();
 
-
-    irq_set_handler(2, handle_simple_irq, "timer");
-
-
-    struct irq_action *action = kmalloc(sizeof(struct irq_action), SLUB_NONE);
-    action->name = "timer";
-    action->handler = do_timer;
-    
-    setup_irq(2, action);
-    
+    printk("init task\n");
     if (my_lisp_boot()) {
         printk("my lisp boot error");
     }

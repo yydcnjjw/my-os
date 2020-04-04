@@ -506,5 +506,12 @@ void init_mapping_mempage(phys_addr_t start, phys_addr_t end) {
 }
 
 void mem_init() {
+
+    init_mm.start_code = (unsigned long)_text;
+    init_mm.end_code = (unsigned long)_etext;
+    init_mm.start_data = (unsigned long)_data;
+    init_mm.end_data = (unsigned long)_edata;
+    init_mm.start_brk = (unsigned long)_brk_base;
+
     init_mapping_mempage((phys_addr_t)KERNEL_LMA_END, end_pfn << PAGE_SHIFT);
 }

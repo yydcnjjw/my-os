@@ -54,11 +54,14 @@ $(ARCHDIR)/hpet.o \
 $(ARCHDIR)/acpi.o \
 $(ARCHDIR)/irq.o \
 lib/string.o \
+lib/rbtree.o \
 mm/memblock.o \
 mm/stack_alloc.o \
 mm/buddy_alloc.o \
 mm/slub_alloc.o \
 init/main.o \
+kernel/task.o \
+kernel/sched.o \
 fs/ext2/super.o \
 drivers/ata/disk.o \
 drivers/pci.o \

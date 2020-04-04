@@ -4,6 +4,7 @@
 #include <asm/idt.h>
 #include <asm/page.h>
 #include <kernel/printk.h>
+#include <my-os/kernel.h>
 
 struct irq_desc irq_desc[NR_IRQS] = {
     [0 ... NR_IRQS - 1] = {.handle_irq = handle_bad_irq}};

@@ -12,10 +12,7 @@
 #include <my-os/mm_types.h>
 #include <my-os/start_kernel.h>
 #include <my-os/string.h>
-#include <my-os/task.h>
 
-// TODO: remove
-union thread_union init_thread_union;
 
 #define PIC1 0x20 /* IO base address for master PIC */
 #define PIC2 0xA0 /* IO base address for slave PIC */

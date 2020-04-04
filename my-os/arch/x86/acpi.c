@@ -90,7 +90,7 @@ void hpet_init(struct HPET *hpet) {
     reg = base_addr + HPET_REG_N_TIMER_COMP_VAL(0);
     u32 freq = 1e15 / COUNTER_CLK_PERIOD;
     printk("freq %d\n", freq);
-    *reg = freq;
+    *reg = freq / 1000;
 
     reg = base_addr + HPET_REG_GENERAL_CNF;
 #define ENABLE_CNF_BIT 0
