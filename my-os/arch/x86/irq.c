@@ -63,7 +63,7 @@ irqreturn_t handle_irq_event(struct irq_desc *desc) {
 }
 
 void handle_bad_irq(struct irq_desc *desc) {
-    printk("bad irq %d", desc->irq_data.irq);
+    printk("bad irq %d\n", desc->irq_data.irq);
     apic_eoi();
 }
 

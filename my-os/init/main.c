@@ -66,6 +66,15 @@ void fpu_init() {
 extern void pci_bus(void);
 size_t end_pfn;
 
+void lisp_task() {
+    printk("my lisp start\n");
+    if (my_lisp_boot()) {
+        printk("my lisp boot error");
+    }
+    printk("my lisp end\n");
+    for(;;);
+}
+
 void start_kernel(void) {
 
     printk("lma end %p\n", (unsigned long)KERNEL_LMA_END);
@@ -86,31 +95,27 @@ void start_kernel(void) {
 
     kmem_cache_init();
 
-    local_apic_init();
-
     idt_setup();
+    init_IRQ();
 
     smp_init();
 
     fpu_init();
 
-    init_IRQ();
-
     keyboard_init();
     pci_bus();
-    
-    schedule_irq_init();
-    
-    acpi_init();
-    ata_init();
-   
+
     schedule_init();
+    schedule_irq_init();
 
-    printk("init task\n");
-    if (my_lisp_boot()) {
-        printk("my lisp boot error");
-    }
+    acpi_init();
+    /* ata_init(); */
+ 
+    local_apic_init();
 
+    struct task_struct *task = create_task("lisp", lisp_task);
+    /* lisp_task(); */
+   
     for (;;)
         ;
 }

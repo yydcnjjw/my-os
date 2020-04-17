@@ -17,7 +17,7 @@ struct sched_entity {
 };
 
 struct cfs_rq {
-    struct rb_root tasks_timeline;
+    struct rb_root_cached tasks_timeline;
     struct sched_entity *curr;
     u64 weight;
     u32 nr_running;
@@ -25,28 +25,25 @@ struct cfs_rq {
     u64 clock_task;
 };
 
+struct cfs_rq *get_rq();
+
 struct thread_struct {
     unsigned long sp;
     unsigned long ip;
-
-    unsigned short es;
-    unsigned short ds;
-    unsigned long fsbase;
-    unsigned long gsbase;
-
-    unsigned long cr2;
-    unsigned long trap_nr;
-    unsigned long error_code;
 };
 
 struct task_struct {
     volatile long state;
     struct sched_entity se;
     struct mm_struct *mm;
-    long pid;
+    u32 pid;
+    u32 flags;
+    const char *name;
     struct list_head tasks;
     struct thread_struct thread;
 };
+
+#define TIF_NEED_RESCHED 3 /* rescheduling necessary */
 
 union thread_union {
     struct task_struct task;
@@ -59,6 +56,27 @@ struct task_struct *init_task;
 extern struct task_struct *get_current(void);
 #define current get_current()
 void set_current(struct task_struct *task);
+#define task_top_of_stack(task) ((unsigned long)(task) + THREAD_SIZE)
+
+typedef void (worker_routine)();
+
+struct task_struct *create_task(const char *name, worker_routine routine);
+
+// sched
+static inline struct task_struct *task_of(struct sched_entity *se) {
+    return container_of(se, struct task_struct, se);
+}
+
+static inline struct sched_entity *sched_of(struct rb_node *node) {
+    return container_of(node, struct sched_entity, run_node);
+}
 
 void schedule_init();
 void schedule_irq_init();
+void rq_enqueue(struct sched_entity *se);
+void rq_dequeue(struct sched_entity *se);
+void activate_task(struct cfs_rq *rq, struct task_struct *task);
+void deactivate_task(struct cfs_rq *rq, struct task_struct *task);
+int nice(int i);
+void context_switch(struct task_struct *prev, struct task_struct *next);
+extern u64 jiffies_64;

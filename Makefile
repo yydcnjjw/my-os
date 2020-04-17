@@ -37,7 +37,7 @@ qemu_gui_debug: my-os.iso
 	qemu-system-x86_64 $(qemu_args) -s -S
 
 qemu: my-os.iso
-	qemu-system-x86_64 $(qemu_args) -nographic
+	qemu-system-x86_64 $(qemu_args) -nographic -s
 
 qemu_gui: my-os.iso
-	qemu-system-x86_64 $(qemu_args)
+	qemu-system-x86_64 $(qemu_args) -s

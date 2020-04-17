@@ -29,15 +29,12 @@ static inline __attribute__((const)) bool is_power_of_2(unsigned long n) {
 #define ALIGN(x, a) __ALIGN_KERNEL((x), (a))
 #define IS_ALIGNED(x, a) (((x) & ((typeof(x))(a)-1)) == 0)
 
-static inline void halt(const char *s) {
-    printk(s);
-    asm volatile("hlt" : : : "memory");
-}
+static inline void halt() { asm volatile("cli;hlt" : : : "memory"); }
 
 #define kassert(cond)                                                          \
     do {                                                                       \
         if (!(cond))                                                           \
-            halt(#cond);                                                       \
+            halt();                                                            \
     } while (0)
 
 #define __AC(X, Y) (X##Y)

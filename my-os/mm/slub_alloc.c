@@ -6,6 +6,7 @@
 #include <my-os/mm_types.h>
 #include <my-os/slub_alloc.h>
 #include <my-os/string.h>
+#include <asm/irq.h>
 
 #define ARCH_KMALLOC_MINALIGN __alignof__(unsigned long long)
 #define ARCH_SLUB_MINALIGN __alignof__(unsigned long long)

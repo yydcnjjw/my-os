@@ -175,8 +175,6 @@ struct keyboard_t {
 
 bool is_keyboard_init = false;
 
-extern void int33(void);
-
 irqreturn_t do_keyboard(int irq, void *dev_id) {
     u8 x = inb(0x60);
 
@@ -194,7 +192,6 @@ struct irq_action keyboard_action = {.name = "keyboard",
                                      .handler = do_keyboard};
 
 void keyboard_init(void) {
-    /* irq_set_handler(0x21, int33); */
     keyboard.buf_size = 128;
     void *p = kmalloc(keyboard.buf_size, SLUB_NONE);
     if (!p) {
@@ -226,8 +223,11 @@ unsigned char get_scancode() {
 }
 
 int get_charcode(char *ch) {
+    /* irq_disable(); */
+    int retval = 0;
     if (!ch) {
-        return -1;
+        retval = -1;
+        goto ret;
     }
 
     unsigned char x = get_scancode();
@@ -244,12 +244,14 @@ int get_charcode(char *ch) {
     if (*ch == 0x2a) {
         keyboard.shift_l = !state;
         *ch = 0;
-        return 0;
+        goto ret;
     }
 
     if (state) {
         *ch = 0;
-        return 0;
+        goto ret;
     }
-    return 0;
+ ret:
+    /* irq_enable(); */
+    return retval;
 }

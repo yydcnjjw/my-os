@@ -1,18 +1,18 @@
 #include "my_lisp.h"
 #include "my_lisp.tab.h"
 #include "my_lisp.lex.h"
-
 #include <kernel/keyboard.h>
 
 ssize_t get_expr_str(char *lineptr, size_t n) {
     char ch;
     if (!lineptr) {
-        return -1;
+        return -2;
     }
     char *ptr = lineptr;
     for (;;) {
         int ret = get_charcode(&ch);
         if (ret) {
+            printk("ch %p\n", &ch);
             return -1;
         }
 
@@ -23,6 +23,7 @@ ssize_t get_expr_str(char *lineptr, size_t n) {
         switch (ch) {
         case '\n':
             printk("\n");
+            *ptr++ = ch;
             return ptr - lineptr;
         case '\b':
             if (ptr != lineptr) {
@@ -58,35 +59,36 @@ int my_lisp_boot(void) {
     env_add_primitives(env, &data);
 
     if (yylex_init_extra(&data, &scanner)) {
-        my_printf("init alloc failed");
+        my_printf("init alloc failed\n");
         return 1;
     }
 
     char *buf = my_malloc(PTE_SIZE);
     while (true) {
         bzero(buf, PTE_SIZE);
-        if (get_expr_str(buf, PTE_SIZE) == -1) {
+        printk("> ");
+        int code = get_expr_str(buf, PTE_SIZE);
+        if (code == -1) {
             printk("getline error\n");
+            break;
+        } else if (code == -2) {
+            printk("getline error ptr null\n");
             break;
         }
         YY_BUFFER_STATE my_string_buffer = yy_scan_string(buf, scanner);
         yy_switch_to_buffer(my_string_buffer, scanner);
 
-        int ret = yyparse(scanner, &data);
+        yyparse(scanner, &data);
         yy_delete_buffer(my_string_buffer, scanner);
 
-        if (!ret) {
-            my_printf("eval: ");
-            object_print(ref(data.ast), env);
-            my_printf("\n");
+        my_printf("eval: ");
+        object_print(ref(data.ast), env);
+        my_printf("\n");
 
-            object *value = eval(data.ast, env, &data);
-            object_print(value, env);
-            my_printf("\n");
-            data.ast = NULL;
-        } else {
-            break;
-        }
+        object *value = eval(data.ast, env, &data);
+        object_print(value, env);
+        my_printf("\n");
+        data.ast = NULL;
     }
     my_free(buf);
 

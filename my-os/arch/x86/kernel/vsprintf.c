@@ -2,6 +2,7 @@
 #include <stdint.h>
 
 #include <string.h>
+extern double pow(double x, double y);
 
 #define is_digit(c) ((c) >= '0' && (c) <= '9')
 
@@ -61,10 +62,10 @@ static char *number(char *str, unsigned long long num, uint8_t base, int size,
     }
 
     int i = 0;
-    char tmp[36];
-	const char *digits="0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    char tmp[36] = {0};
+    const char *digits = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     if (type & SMALL)
-        digits="0123456789abcdefghijklmnopqrstuvwxyz";
+        digits = "0123456789abcdefghijklmnopqrstuvwxyz";
 
     if (num < base)
         tmp[i++] = digits[num];
@@ -104,6 +105,67 @@ static char *number(char *str, unsigned long long num, uint8_t base, int size,
             *str++ = c;
     while (i < precision--)
         *str++ = '0';
+    while (i-- > 0)
+        *str++ = tmp[i];
+    while (size-- > 0)
+        *str++ = ' ';
+    return str;
+}
+
+static char *format_float(char *str, double num, int size, int precision,
+                          unsigned int type) {
+    if (type & LEFT)
+        type &= ~ZEROPAD;
+    char c = (type & ZEROPAD) ? '0' : ' ';
+
+    char sign = 0;
+    if (type & SIGN && num < 0) {
+        sign = '-';
+        num = -num;
+    } else {
+        if (type & PLUS)
+            sign = '+';
+        else if (type & SPACE)
+            sign = ' ';
+    }
+
+    if (sign)
+        size--;
+
+    int ipart = (int)num;
+    double fpart = num - (double)ipart;
+
+    int i = 0;
+    char tmp[36] = {0};
+    const char *digits = "0123456789";
+
+    if (precision == -1) {
+        precision = 6;
+    }
+
+    fpart = fpart * pow(10, precision);
+    do {
+        tmp[i++] = digits[do_div(fpart, 10)];
+    } while (fpart);
+
+    tmp[i++] = '.';
+    
+    do {
+        tmp[i++] = digits[do_div(ipart, 10)];
+    } while (ipart);
+
+    size -= i;
+
+    if (!(type & (ZEROPAD + LEFT)))
+        while (size-- > 0)
+            *str++ = ' ';
+
+    if (sign)
+        *str++ = sign;
+
+    if (!(type & LEFT))
+        while (size-- > 0)
+            *str++ = c;
     while (i-- > 0)
         *str++ = tmp[i];
     while (size-- > 0)
@@ -225,7 +287,7 @@ int vsprintf(char *buf, const char *fmt, va_list args) {
 
         case 'x':
             flags |= SMALL;
-            __attribute__((fallthrough));            
+            __attribute__((fallthrough));
         case 'X':
             str = number(str, va_arg(args, unsigned long), 16, field_width,
                          precision, flags);
@@ -240,6 +302,10 @@ int vsprintf(char *buf, const char *fmt, va_list args) {
                          precision, flags);
             break;
 
+        case 'f':
+            str = format_float(str, va_arg(args, double), field_width,
+                               precision, flags);
+            break;
         case 'n':
             ip = va_arg(args, int *);
             *ip = (str - buf);

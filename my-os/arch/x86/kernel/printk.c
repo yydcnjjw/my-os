@@ -1,4 +1,5 @@
 #include <kernel/printk.h>
+#include <asm/irq.h>
 
 static char buf[1024];
 

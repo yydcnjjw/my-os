@@ -1,4 +1,5 @@
 #include <asm/io.h>
+#include <asm/irq.h>
 #include <kernel/printk.h>
 #include <my-os/string.h>
 
@@ -101,10 +102,10 @@ void early_vga_write(const char *str) {
         if (c == '\n') {
             current_col = 0;
             current_row++;
-            if (current_row == VGA_HEIGHT) {
-                current_row--;
-                early_vga_scroll();
-            }
+            /* if (current_row == VGA_HEIGHT) { */
+            /*     current_row--; */
+            /*     early_vga_scroll(); */
+            /* } */
         } else if (c != '\r') {
             *get_vga_ptr(current_row, current_col++) |= c;
             if (current_col == VGA_WIDTH) {
@@ -112,11 +113,16 @@ void early_vga_write(const char *str) {
                 current_row++;
             }
         }
+        if (current_row == VGA_HEIGHT) {
+            current_row--;
+            early_vga_scroll();
+        }
     }
     update_cursor();
 }
 
 void vga_backspace() {
+    /* irq_disable(); */
     if (current_col == 0) {
         if (current_row != 0) {
             current_row--;
@@ -126,6 +132,7 @@ void vga_backspace() {
     current_col--;
     *get_vga_ptr(current_row, current_col) = 0x0f00;
     update_cursor();
+    /* irq_enable(); */
 }
 
 void early_vga_init() {

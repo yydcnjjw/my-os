@@ -178,5 +178,6 @@ extern void early_fixup_exception(struct pt_regs *regs, int trapnr) {
 
 halt_loop:
     while (true)
-        halt("idt error");
+        asm volatile("cli;hlt" : : : "memory");
+        /* halt(); */
 }

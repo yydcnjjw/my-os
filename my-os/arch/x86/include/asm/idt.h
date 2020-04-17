@@ -2,6 +2,7 @@
 
 #ifndef __ASSEMBLY__
 #include <my-os/types.h>
+#include <asm/irq.h>
 struct pt_regs {
     /*
      * C ABI says these regs are callee-preserved. They aren't saved on kernel
@@ -36,10 +37,6 @@ struct pt_regs {
     unsigned long ss;
     /* top of stack page */
 };
-
-static inline void irq_disable(void) { asm volatile("cli" : : : "memory"); }
-
-static inline void irq_enable(void) { asm volatile("sti" : : : "memory"); }
 
 void idt_setup(void);
 #endif

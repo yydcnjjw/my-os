@@ -78,18 +78,18 @@ irq_entries_start:
 common_interrupt:
     addq $-0x80, (%rsp)         /* Adjust vector to [-256, -1] range */
     PUSH_AND_CLEAR_REGS
+    cld
     movq %rsp, %rdi
     call do_IRQ
-    POP_REGS
-    addq $8, %rsp
-
     jmp retint
 
 retint:
-    btl $9, EFLAGS(%rsp)
-    jnc 1f
+    // btl $9, EFLAGS(%rsp)
+    // jnc 1f
     call preempt_schedule_irq
 1:
+    POP_REGS
+    addq $8, %rsp
     iretq
 
 

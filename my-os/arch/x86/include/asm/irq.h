@@ -58,4 +58,12 @@ void setup_irq(int irq, struct irq_action *new);
 
 void init_IRQ(void);
 
+static inline void irq_disable(void) {
+    asm volatile("cli" : : : "memory");
+}
+
+static inline void irq_enable(void) {
+    asm volatile("sti" : : : "memory");
+}
+
 #endif
