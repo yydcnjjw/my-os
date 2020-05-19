@@ -2,9 +2,9 @@
 #define yyHEADER_H 1
 #define yyIN_HEADER 1
 
-#line 5 "my_lisp.lex.h"
+#line 5 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.lex.h"
 
-#line 7 "my_lisp.lex.h"
+#line 7 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.lex.h"
 
 #define  YY_INT_ALIGNED short int
 
@@ -45,6 +45,7 @@
 /* First, we deal with  platform-specific or compiler-specific issues. */
 
 /* begin standard C headers. */
+#include "my_lisp.h"
 /* #include <stdio.h> */
 /* #include <string.h> */
 /* #include <errno.h> */
@@ -252,13 +253,12 @@ void yyfree ( void * , yyscan_t yyscanner );
 #define x_prefix 3
 #define x_suffix 4
 #define x_mantissa_width 5
-#define x_real10_end 6
-#define x_radix 7
-#define x_radix10 8
-#define x_real 9
-#define x_real10 10
-#define x_naninf 11
-#define x_complex 12
+#define x_radix 6
+#define x_radix10 7
+#define x_real 8
+#define x_real10 9
+#define x_naninf 10
+#define x_complex 11
 
 #endif
 
@@ -530,9 +530,9 @@ extern int yylex \
 #undef yyTABLES_NAME
 #endif
 
-#line 414 "my_lisp.l"
+#line 301 "my_lisp.l"
 
 
-#line 536 "my_lisp.lex.h"
+#line 535 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.lex.h"
 #undef yyIN_HEADER
 #endif /* yyHEADER_H */

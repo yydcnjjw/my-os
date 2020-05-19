@@ -88,7 +88,7 @@ int memcmp(const void *cs, const void *ct, size_t count) {
     return res;
 }
 
-char *strdup(char *s) {
+char *strdup(const char *s) {
     size_t len = strlen(s) + 1;
     char *new = kmalloc(len, SLUB_NONE);
     memcpy(new, s, len );

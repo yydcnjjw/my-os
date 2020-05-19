@@ -34,7 +34,7 @@ u16 *vga_base = (u16 *)VGA_BASE;
 
 void enable_cursor() {
     outb(0x09, VGA_CRTC_INDEX); /* max scan line register */
-    u8 max_scan_line = inb(VGA_CRTC_DATA) & 0x1ff;
+    /* u8 max_scan_line = inb(VGA_CRTC_DATA) & 0x1ff; */
 
     outb(0x0a, VGA_CRTC_INDEX);
     outb(inb(VGA_CRTC_DATA) | 0, 0x3d5);

@@ -9,6 +9,7 @@
 #include <asm/sections.h>
 #include <asm/smp.h>
 
+#include <my-os/pci.h>
 #include <my-os/buddy_alloc.h>
 #include <my-os/disk.h>
 #include <my-os/memblock.h>
@@ -63,7 +64,7 @@ void fpu_init() {
     printk("%d\n", (int)(a * 10 * 2.1));
 }
 
-extern void pci_bus(void);
+
 size_t end_pfn;
 
 void lisp_task() {

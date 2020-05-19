@@ -51,7 +51,7 @@ union thread_union {
 };
 
 extern union thread_union init_thread_union;
-struct task_struct *init_task;
+extern struct task_struct *init_task;
 
 extern struct task_struct *get_current(void);
 #define current get_current()

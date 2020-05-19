@@ -32,7 +32,7 @@
 #define ATA_CMD_READ_DMA_EXT 0x25
 #define ATA_CMD_WRITE_PIO 0x30
 #define ATA_CMD_WRITE_PIO_EXT 0x34
-#define ATA_CMD_WRITE_DMA 0xcaA
+#define ATA_CMD_WRITE_DMA 0xca
 #define ATA_CMD_WRITE_DMA_EXT 0x35
 #define ATA_CMD_CACHE_FLUSH 0xe7
 #define ATA_CMD_CACHE_FLUSH_EXT 0xea
@@ -400,11 +400,12 @@ unsigned char ide_ata_access(u8 direction, u8 drive, u32 lba, u8 numsects,
     ide_write(channel, ATA_REG_COMMAND, cmd); // Send the Command.
 
     if (dma)
-        if (direction == 0)
-            ;
-        // DMA Read.
-        else
-            ; // DMA Write.
+        if (direction == 0) {
+            // DMA Read.
+        }
+        else {
+            // DMA Write.
+        }
     else if (direction == 0)
         // PIO Read.
         for (i = 0; i < numsects; i++) {
@@ -634,13 +635,7 @@ void ide_write_sectors(unsigned char drive, unsigned char numsects,
 extern void int2f(void);
 void ata_init() {
     /* irq_set_handler(0x2f, int2f); */
-    struct pci_device *pci_device;
-    list_for_each_entry(pci_device, &pci_devices, list) {
-        if (pci_device->config.class_code == 1 &&
-            pci_device->config.sub_class == 1) {
-            break;
-        }
-    }
+    struct pci_device *pci_device = get_pci_device(1, 1);
 
     printk("bus %d device %d function %d\n", pci_device->bus,
            pci_device->device, pci_device->function);

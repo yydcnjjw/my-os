@@ -1,4 +1,4 @@
-/* A Bison parser, made by GNU Bison 3.5.1.  */
+/* A Bison parser, made by GNU Bison 3.5.4.  */
 
 /* Bison implementation for Yacc-like parsers in C
 
@@ -48,7 +48,7 @@
 #define YYBISON 1
 
 /* Bison version.  */
-#define YYBISON_VERSION "3.5.1"
+#define YYBISON_VERSION "3.5.4"
 
 /* Skeleton name.  */
 #define YYSKELETON_NAME "yacc.c"
@@ -148,15 +148,16 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 20 "my_lisp.y"
+#line 19 "my_lisp.y"
 
     number *num;
     symbol *symbol;
     object *obj;
     string *str;
+    const char *abbrev;
     u16 ch;
 
-#line 160 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
+#line 161 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
 
 };
 typedef union YYSTYPE YYSTYPE;
@@ -188,7 +189,6 @@ int yyparse (yyscan_t scanner, parse_data *data);
 /* Unqualified %code blocks.  */
 #line 15 "my_lisp.y"
 
-    #include "my_lisp.lex.h"
     void yyerror(YYLTYPE *yylloc, yyscan_t scanner, parse_data *data, const char *s, ...);        
 
 #line 195 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
@@ -496,18 +496,18 @@ union yyalloc
 #endif /* !YYCOPY_NEEDED */
 
 /* YYFINAL -- State number of the termination state.  */
-#define YYFINAL  28
+#define YYFINAL  35
 /* YYLAST -- Last index in YYTABLE.  */
-#define YYLAST   84
+#define YYLAST   117
 
 /* YYNTOKENS -- Number of terminals.  */
 #define YYNTOKENS  25
 /* YYNNTS -- Number of nonterminals.  */
-#define YYNNTS  13
+#define YYNNTS  14
 /* YYNRULES -- Number of rules.  */
-#define YYNRULES  26
+#define YYNRULES  34
 /* YYNSTATES -- Number of states.  */
-#define YYNSTATES  34
+#define YYNSTATES  42
 
 #define YYUNDEFTOK  2
 #define YYMAXUTOK   279
@@ -556,9 +556,10 @@ static const yytype_int8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_int8 yyrline[] =
 {
-       0,    45,    45,    46,    49,    50,    53,    54,    55,    56,
-      57,    60,    63,    66,    67,    70,    72,    75,    80,    81,
-      82,    85,    86,    87,    88,    89,    92
+       0,    49,    49,    50,    53,    54,    57,    58,    59,    60,
+      61,    64,    67,    70,    71,    74,    76,    79,    84,    85,
+      86,    89,    90,    91,    92,    93,    96,   106,   107,   108,
+     109,   110,   111,   112,   113
 };
 #endif
 
@@ -573,7 +574,7 @@ static const char *const yytname[] =
   "BOOLEAN_T", "BOOLEAN_F", "NUMBER", "CHARACTER", "STRING", "END_OF_FILE",
   "$accept", "exp", "datum", "lexeme_datum", "string", "number", "boolean",
   "character", "symbol", "compound_datum", "list_item", "list",
-  "abbreviation", YY_NULLPTR
+  "abbreviation", "abbrev_prefix", YY_NULLPTR
 };
 #endif
 
@@ -588,7 +589,7 @@ static const yytype_int16 yytoknum[] =
 };
 # endif
 
-#define YYPACT_NINF (-2)
+#define YYPACT_NINF (-4)
 
 #define yypact_value_is_default(Yyn) \
   ((Yyn) == YYPACT_NINF)
@@ -602,10 +603,11 @@ static const yytype_int16 yytoknum[] =
      STATE-NUM.  */
 static const yytype_int8 yypact[] =
 {
-      -1,    27,    33,    61,    -2,    -2,    -2,    -2,    -2,    -2,
-      -2,     1,    -2,    -2,    -2,    -2,    -2,    -2,    -2,    -2,
-      -2,    -2,    -2,    54,     4,    -2,     5,    -2,    -2,    61,
-      -2,    -2,    -2,    -2
+       1,    31,    52,    -4,    -4,    -4,    -4,    -4,    -4,    -4,
+      -4,    -4,    -4,    -4,    -4,    -4,    -4,    -4,     2,    -4,
+      -4,    -4,    -4,    -4,    -4,    -4,    -4,    -4,    -4,    94,
+      -4,    73,     3,    -4,    -3,    -4,    -4,    94,    -4,    -4,
+      -4,    -4
 };
 
   /* YYDEFACT[STATE-NUM] -- Default reduction number in state STATE-NUM.
@@ -613,24 +615,25 @@ static const yytype_int8 yypact[] =
      means the default is an error.  */
 static const yytype_int8 yydefact[] =
 {
-       0,     0,     0,     0,    16,    13,    14,    12,    15,    11,
-       3,     0,     2,     4,     9,     7,     6,    10,     8,     5,
-      17,    25,    23,    18,     0,    24,     0,    26,     1,     0,
-      19,    21,    22,    20
+       0,     0,     0,    27,    28,    29,    30,    31,    32,    33,
+      34,    16,    13,    14,    12,    15,    11,     3,     0,     2,
+       4,     9,     7,     6,    10,     8,     5,    17,    25,     0,
+      23,    18,     0,    24,     0,     1,    26,     0,    19,    21,
+      22,    20
 };
 
   /* YYPGOTO[NTERM-NUM].  */
 static const yytype_int8 yypgoto[] =
 {
-      -2,    -2,     0,    -2,    -2,    -2,    -2,    -2,    -2,    -2,
-       3,    -2,    -2
+      -4,    -4,     0,    -4,    -4,    -4,    -4,    -4,    -4,    -4,
+      -1,    -4,    -4,    -4
 };
 
   /* YYDEFGOTO[NTERM-NUM].  */
 static const yytype_int8 yydefgoto[] =
 {
-      -1,    11,    23,    13,    14,    15,    16,    17,    18,    19,
-      24,    20,    21
+      -1,    18,    31,    20,    21,    22,    23,    24,    25,    26,
+      32,    27,    28,    29
 };
 
   /* YYTABLE[YYPACT[STATE-NUM]] -- What to do in state STATE-NUM.  If
@@ -638,38 +641,45 @@ static const yytype_int8 yydefgoto[] =
      number is the opposite.  If YYTABLE_NINF, syntax error.  */
 static const yytype_int8 yytable[] =
 {
-      12,    28,     1,    27,     2,    26,     3,     0,    31,     0,
-       0,    32,     0,     0,     0,     0,     0,     4,     5,     6,
-       7,     8,     9,    10,     0,     0,    30,     0,     0,    33,
-       1,    22,     2,     0,     3,     0,     1,     0,     2,    25,
-       3,     0,     0,     0,     0,     4,     5,     6,     7,     8,
-       9,     4,     5,     6,     7,     8,     9,     1,     0,     2,
-       0,     3,     0,     0,     1,    29,     2,     0,     3,     0,
-       0,     0,     4,     5,     6,     7,     8,     9,     0,     4,
-       5,     6,     7,     8,     9
+      19,    34,    35,    40,     1,     0,     2,    39,     3,     4,
+       5,     6,     0,     7,     8,     9,    10,     0,     0,    11,
+      12,    13,    14,    15,    16,    17,     0,     0,     0,    36,
+      38,     0,     0,     0,     1,    30,     2,    41,     3,     4,
+       5,     6,     0,     7,     8,     9,    10,     0,     0,    11,
+      12,    13,    14,    15,    16,     1,     0,     2,    33,     3,
+       4,     5,     6,     0,     7,     8,     9,    10,     0,     0,
+      11,    12,    13,    14,    15,    16,     1,     0,     2,     0,
+       3,     4,     5,     6,    37,     7,     8,     9,    10,     0,
+       0,    11,    12,    13,    14,    15,    16,     1,     0,     2,
+       0,     3,     4,     5,     6,     0,     7,     8,     9,    10,
+       0,     0,    11,    12,    13,    14,    15,    16
 };
 
 static const yytype_int8 yycheck[] =
 {
-       0,     0,     3,     3,     5,     2,     7,    -1,     4,    -1,
-      -1,     6,    -1,    -1,    -1,    -1,    -1,    18,    19,    20,
-      21,    22,    23,    24,    -1,    -1,    23,    -1,    -1,    29,
-       3,     4,     5,    -1,     7,    -1,     3,    -1,     5,     6,
-       7,    -1,    -1,    -1,    -1,    18,    19,    20,    21,    22,
-      23,    18,    19,    20,    21,    22,    23,     3,    -1,     5,
-      -1,     7,    -1,    -1,     3,    11,     5,    -1,     7,    -1,
-      -1,    -1,    18,    19,    20,    21,    22,    23,    -1,    18,
-      19,    20,    21,    22,    23
+       0,     2,     0,     6,     3,    -1,     5,     4,     7,     8,
+       9,    10,    -1,    12,    13,    14,    15,    -1,    -1,    18,
+      19,    20,    21,    22,    23,    24,    -1,    -1,    -1,    29,
+      31,    -1,    -1,    -1,     3,     4,     5,    37,     7,     8,
+       9,    10,    -1,    12,    13,    14,    15,    -1,    -1,    18,
+      19,    20,    21,    22,    23,     3,    -1,     5,     6,     7,
+       8,     9,    10,    -1,    12,    13,    14,    15,    -1,    -1,
+      18,    19,    20,    21,    22,    23,     3,    -1,     5,    -1,
+       7,     8,     9,    10,    11,    12,    13,    14,    15,    -1,
+      -1,    18,    19,    20,    21,    22,    23,     3,    -1,     5,
+      -1,     7,     8,     9,    10,    -1,    12,    13,    14,    15,
+      -1,    -1,    18,    19,    20,    21,    22,    23
 };
 
   /* YYSTOS[STATE-NUM] -- The (internal number of the) accessing
      symbol of state STATE-NUM.  */
 static const yytype_int8 yystos[] =
 {
-       0,     3,     5,     7,    18,    19,    20,    21,    22,    23,
-      24,    26,    27,    28,    29,    30,    31,    32,    33,    34,
-      36,    37,     4,    27,    35,     6,    35,    27,     0,    11,
-      35,     4,     6,    27
+       0,     3,     5,     7,     8,     9,    10,    12,    13,    14,
+      15,    18,    19,    20,    21,    22,    23,    24,    26,    27,
+      28,    29,    30,    31,    32,    33,    34,    36,    37,    38,
+       4,    27,    35,     6,    35,     0,    27,    11,    35,     4,
+       6,    27
 };
 
   /* YYR1[YYN] -- Symbol number of symbol that rule YYN derives.  */
@@ -677,7 +687,8 @@ static const yytype_int8 yyr1[] =
 {
        0,    25,    26,    26,    27,    27,    28,    28,    28,    28,
       28,    29,    30,    31,    31,    32,    33,    34,    35,    35,
-      35,    36,    36,    36,    36,    36,    37
+      35,    36,    36,    36,    36,    36,    37,    38,    38,    38,
+      38,    38,    38,    38,    38
 };
 
   /* YYR2[YYN] -- Number of symbols on the right hand side of rule YYN.  */
@@ -685,7 +696,8 @@ static const yytype_int8 yyr2[] =
 {
        0,     2,     1,     1,     1,     1,     1,     1,     1,     1,
        1,     1,     1,     1,     1,     1,     1,     1,     1,     2,
-       3,     3,     3,     2,     2,     1,     2
+       3,     3,     3,     2,     2,     1,     2,     1,     1,     1,
+       1,     1,     1,     1,     1
 };
 
 
@@ -1486,111 +1498,110 @@ yyreduce:
   switch (yyn)
     {
   case 2:
-#line 45 "my_lisp.y"
+#line 49 "my_lisp.y"
            { data->ast = (yyvsp[0].obj); YYACCEPT; }
-#line 1492 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
-    break;
-
-  case 3:
-#line 46 "my_lisp.y"
-              { eof_handle(); YYACCEPT; }
-#line 1498 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
-    break;
-
-  case 11:
-#line 60 "my_lisp.y"
-               { (yyval.obj) = new_string((yyvsp[0].str)); }
 #line 1504 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
     break;
 
-  case 12:
-#line 63 "my_lisp.y"
-               { (yyval.obj) = new_number((yyvsp[0].num)); }
+  case 3:
+#line 50 "my_lisp.y"
+              { data->is_eof = true; YYACCEPT; }
 #line 1510 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
     break;
 
-  case 13:
-#line 66 "my_lisp.y"
-                    { (yyval.obj) = new_boolean(true); }
+  case 11:
+#line 64 "my_lisp.y"
+               { (yyval.obj) = new_string((yyvsp[0].str)); }
 #line 1516 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
     break;
 
-  case 14:
+  case 12:
 #line 67 "my_lisp.y"
-             { (yyval.obj) = new_boolean(false); }
+               { (yyval.obj) = new_number((yyvsp[0].num)); }
 #line 1522 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
     break;
 
-  case 15:
+  case 13:
 #line 70 "my_lisp.y"
-                     { (yyval.obj) = new_character((yyvsp[0].ch)); }
+                    { (yyval.obj) = new_boolean(true); }
 #line 1528 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
     break;
 
-  case 16:
-#line 72 "my_lisp.y"
-                   { (yyval.obj) = new_symbol((yyvsp[0].symbol)); }
+  case 14:
+#line 71 "my_lisp.y"
+             { (yyval.obj) = new_boolean(false); }
 #line 1534 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
     break;
 
-  case 18:
-#line 80 "my_lisp.y"
-                 { (yyval.obj) = cons((yyvsp[0].obj), NIL); }
+  case 15:
+#line 74 "my_lisp.y"
+                     { (yyval.obj) = new_character((yyvsp[0].ch)); }
 #line 1540 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
     break;
 
-  case 19:
-#line 81 "my_lisp.y"
-                  { (yyval.obj) = cons((yyvsp[-1].obj), (yyvsp[0].obj)); }
+  case 16:
+#line 76 "my_lisp.y"
+                   { (yyval.obj) = new_symbol((yyvsp[0].symbol)); }
 #line 1546 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
     break;
 
-  case 20:
-#line 82 "my_lisp.y"
-                     { (yyval.obj) = cons((yyvsp[-2].obj), (yyvsp[0].obj)); }
+  case 18:
+#line 84 "my_lisp.y"
+                 { (yyval.obj) = cons((yyvsp[0].obj), NIL); }
 #line 1552 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
     break;
 
-  case 21:
+  case 19:
 #line 85 "my_lisp.y"
-                      { (yyval.obj) = (yyvsp[-1].obj);}
+                  { (yyval.obj) = cons((yyvsp[-1].obj), (yyvsp[0].obj)); }
 #line 1558 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
     break;
 
-  case 22:
+  case 20:
 #line 86 "my_lisp.y"
-                    { (yyval.obj) = (yyvsp[-1].obj); }
+                     { (yyval.obj) = cons((yyvsp[-2].obj), (yyvsp[0].obj)); }
 #line 1564 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
     break;
 
-  case 23:
-#line 87 "my_lisp.y"
-        { (yyval.obj) = NIL; }
+  case 21:
+#line 89 "my_lisp.y"
+                      { (yyval.obj) = (yyvsp[-1].obj);}
 #line 1570 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
     break;
 
-  case 24:
-#line 88 "my_lisp.y"
-          { (yyval.obj) = NIL; }
+  case 22:
+#line 90 "my_lisp.y"
+                    { (yyval.obj) = (yyvsp[-1].obj); }
 #line 1576 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
     break;
 
-  case 26:
-#line 92 "my_lisp.y"
-                               {
-    object *quote = new_symbol(lookup(data, "quote"));
-    if ((yyvsp[0].obj) == NIL) {
-        (yyval.obj) = cons(quote, NIL);
-    } else {
-        (yyval.obj) = cons(quote, cons((yyvsp[0].obj), NIL));
-    }
+  case 23:
+#line 91 "my_lisp.y"
+        { (yyval.obj) = NIL; }
+#line 1582 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
+    break;
 
+  case 24:
+#line 92 "my_lisp.y"
+          { (yyval.obj) = NIL; }
+#line 1588 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
+    break;
+
+  case 26:
+#line 96 "my_lisp.y"
+                                  {
+    object *abbrev = new_symbol(lookup(data, (yyvsp[-1].abbrev)));
+    if ((yyvsp[0].obj) == NIL) {
+        (yyval.obj) = cons(abbrev, NIL);
+    } else {
+        (yyval.obj) = cons(abbrev, cons((yyvsp[0].obj), NIL));
+    }
  }
-#line 1590 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
+#line 1601 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
     break;
 
 
-#line 1594 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
+#line 1605 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.c"
 
       default: break;
     }
@@ -1828,5 +1839,5 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 117 "my_lisp.y"
+#line 120 "my_lisp.y"
 

@@ -21,6 +21,6 @@ char *strchr(const char *s, int c);
 
 int memcmp(const void *cs, const void *ct, size_t count);
 
-char *strdup(char *s);
+char *strdup(const char *s);
 
 #endif /* X86_KERNEL_STRING_H */

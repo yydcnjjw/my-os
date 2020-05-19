@@ -2,10 +2,10 @@
 #include <kernel/printk.h>
 #include <my-os/kernel.h>
 #include <my-os/list.h>
+#include <my-os/pci.h>
 #include <my-os/slub_alloc.h>
 #include <my-os/string.h>
 #include <my-os/types.h>
-#include <my-os/pci.h>
 
 LIST_HEAD(pci_devices);
 
@@ -103,6 +103,15 @@ void pci_check_all_buses(void) {
     }
 }
 
-void pci_bus() {
-    pci_check_all_buses();
+struct pci_device *get_pci_device(u8 class_code, u8 sub_class) {
+    struct pci_device *pci_device;
+    list_for_each_entry(pci_device, &pci_devices, list) {
+        if (pci_device->config.class_code == class_code &&
+            pci_device->config.sub_class == sub_class) {
+            break;
+        }
+    }
+    return pci_device;
 }
+
+void pci_bus() { pci_check_all_buses(); }

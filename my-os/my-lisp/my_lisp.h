@@ -6,6 +6,7 @@
 #include <my-os/types.h>
 
 #include "os.h"
+#include "number.h"
 
 typedef enum {
     T_PRIMITIVE_PROC = 0x1,
@@ -66,7 +67,6 @@ struct compound_proc_t {
 };
 typedef struct compound_proc_t compound_proc;
 
-struct parse_data;
 typedef struct parse_data parse_data;
 
 typedef object *primitive_proc_ptr(env *env, object *args, parse_data *data);
@@ -83,43 +83,6 @@ struct macro_proc_t {
 };
 
 typedef struct macro_proc_t macro_proc;
-enum exact_flag { EXACT = 1, INEXACT };
-enum radix_flag { RADIX_2, RADIX_8, RADIX_10, RADIX_16 };
-enum naninf_flag {
-    NAN_POSITIVE = 1 << 0,
-    INF_POSITIVE = 1 << 1,
-    NAN_NEGATIVE = 1 << 2,
-    INF_NEGATIVE = 1 << 3
-};
-
-#define _REAL_BIT 0x1
-#define _IMAG_BIT 0x2
-#define _REAL_IMAG_BIT (_REAL_BIT | _IMAG_BIT)
-
-struct number_flag_t {
-    u64 complex : 1;
-    u64 flo : 1;   /* 1 flo 0 fix */
-    u64 exact : 2; /* 1 represent "uint"/"uint" */
-    u64 radix : 4;
-    u64 naninf : 8; /* low 4bit real high 4bit imag */
-    u64 size: 4;    /* value size */
-};
-
-void set_number_prefix(struct number_flag_t *number_flag, char c,
-                       enum exact_flag *flag);
-u64 _str_to_real(char *, enum radix_flag, bool);
-// handle str "uinteger* / uinteger*"
-void extract_uinteger(char *s, u64 uints[2], enum radix_flag flag);
-
-void _flo_to_exact(u64 value[2]);
-// is_exact is uint"/"uint
-void _exact_to_flo(u64 value[2], bool is_exact);
-
-struct number_t {
-    struct number_flag_t flag;
-    u64 value[];
-};
-typedef struct number_t number;
 
 struct object_t {
     object_type type;
@@ -141,16 +104,16 @@ struct object_t {
 struct parse_data {
     object *ast;
     symbol **symtab;
+    bool is_eof;
 };
 
-symbol *lookup(parse_data *, char *);
+symbol *lookup(parse_data *, const char *);
 object *new_boolean(bool val);
 object *new_symbol(symbol *s);
 
 string *make_string(char *, size_t);
 object *new_string(string *);
 
-number *make_number(struct number_flag_t flag, const u64 value[4]);
 object *new_number(number *);
 object *new_character(u16 ch);
 
@@ -158,7 +121,7 @@ object *cons(object *car, object *cdr);
 object *car(object *pair);
 object *cdr(object *pair);
 
-object *NIL;
+extern object *NIL;
 
 env *new_env(void);
 void free_env(env *e);
@@ -167,44 +130,76 @@ void env_add_primitives(env *, parse_data *);
 
 #define NHASH 9997
 
-object *eval(object *exp, env *env, parse_data *data);
+object *eval_from_ast(object *exp, env *env, parse_data *data);
 void object_print(object *o, env *);
 
 void free_lisp(parse_data *data);
 
-void eof_handle(void);
-
 object *ref(object *o);
 object *unref(object *o);
 
-#define TYPE_CPY(target, source)                                               \
-    assert(sizeof((target)) == sizeof((source)));                              \
-    memcpy(&(target), &(source), sizeof((target)))
+/* #define TYPE_CPY(target, source)                                               \ */
+/*     assert(sizeof((target)) == sizeof((source)));                              \ */
+/*     memcpy(&(target), &(source), sizeof((target))) */
 
-#define TO_TYPE(val, type) (*((type *)(&(val))))
+/* #define TO_TYPE(val, type) (*((type *)(&(val)))) */
 
-#ifdef MY_OS
-#define YY_INPUT(_buf, result, max_size)
-/* parse_data *p_data = (parse_data *)yyget_extra(yyscanner); \ */
-/* int c = p_data->buf[p_data->pos++];                                        \
- */
-/* result = (c == 0) ? YY_NULL : (_buf[0] = c, 1) */
+static inline object *object_list_entry(object *list) {
+    return list->type == T_PAIR ? car(list) : list;
+}
 
-void my_error(const char *);
-#define YY_FATAL_ERROR(msg) my_error(msg)
-#endif
+static inline bool object_list_has_next(object *list) {
+    bool ret_val = list;
+    unref(list);
+    return ret_val;
+}
 
-typedef void FILE;
-extern int errno;
-extern FILE *stdin;
-extern FILE *stdout;
+static inline object *object_list_next(object *idx) {
+    return idx->type == T_PAIR ? cdr(idx) : (unref(idx), NULL);
+}
 
+#define for_each_object_list_entry(o, list)                                    \
+    for (object *idx = ref(list);                                              \
+         !object_list_has_next(ref(idx))                                       \
+             ? false                                                           \
+             : (o = object_list_entry(ref(idx)), true);                        \
+         unref(o), idx = object_list_next(idx))
 
-#define YYMALLOC(s) kmalloc(s, SLUB_NONE)
-#define YYFREE(p) kfree(p)
+#define for_each_object_list(list)                                             \
+    for (object *idx = ref(list);                                              \
+         idx && (idx->type == T_PAIR ? true : (unref(idx), false));            \
+         idx = cdr(idx))
 
-extern bool IS_EOF;
+static inline object *is_error(object *o) {
+    bool ret = o && o->type == T_ERR;
+    if (ret) {
+        return o;
+    } else {
+        unref(o);
+        return NIL;
+    }
+}
 
-int my_lisp_boot(void);
+#define ERROR(e) for (object *error = is_error(e); error; error = NIL)
+
+#define ASSERT(cond, fmt, ...) (!(cond) ? new_error(fmt, ##__VA_ARGS__) : NIL)
+
+object *assert_fun_arg_type(char *func, object *o, int i, object_type type);
+
+struct lisp_ctx_opt {
+
+};
+
+#include "my_lisp.tab.h"
+
+struct lisp_ctx {
+    yyscan_t scanner;
+    parse_data *parse_data;
+    env *global_env;
+};
+
+struct lisp_ctx *make_lisp_ctx(struct lisp_ctx_opt opt);
+void free_lisp_ctx(struct lisp_ctx **);
+object *eval_from_str(struct lisp_ctx *ctx, char *code);
 
 #endif /* MY_LISP_H */

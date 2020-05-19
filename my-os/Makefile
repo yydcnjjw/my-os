@@ -71,7 +71,8 @@ my-lisp/my_lisp.lex.o \
 my-lisp/my_lisp.tab.o \
 my-lisp/my_lisp.o \
 my-lisp/my_lisp_boot.o \
-my-lisp/os.o
+my-lisp/os.o \
+my-lisp/number.o
 
 .PHONY: all
 

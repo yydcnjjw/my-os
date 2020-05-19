@@ -1,4 +1,4 @@
-/* A Bison parser, made by GNU Bison 3.5.1.  */
+/* A Bison parser, made by GNU Bison 3.5.4.  */
 
 /* Bison interface for Yacc-like parsers in C
 
@@ -85,15 +85,16 @@ extern int yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 20 "my_lisp.y"
+#line 19 "my_lisp.y"
 
     number *num;
     symbol *symbol;
     object *obj;
     string *str;
+    const char *abbrev;
     u16 ch;
 
-#line 97 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.h"
+#line 98 "/home/yydcnjjw/workspace/code/project/my-lisp/debug/src/my_lisp.tab.h"
 
 };
 typedef union YYSTYPE YYSTYPE;

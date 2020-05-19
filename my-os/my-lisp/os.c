@@ -1,16 +1,16 @@
 #include "os.h"
-#include "my_lisp.tab.h"
-#include "my_lisp.lex.h"
-#include <asm/irq.h>
-/* #include <stdarg.h> */
-/* #include <stdio.h> */
-/* #include <stdlib.h> */
-/* #include <string.h> */
+
+#include <stdarg.h>
 
 int my_printf(const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
+#ifdef MY_OS
     int ret = vprintk(fmt, args);
+#else
+    int ret = vprintf(fmt, args);
+#endif // MY_OS
+
     va_end(args);
     return ret;
 }
@@ -28,37 +28,41 @@ int my_sprintf(char *buf, const char *fmt, ...) {
 }
 
 void *my_malloc(size_t size) {
-    /* irq_disable(); */
+
+#ifdef MY_OS
     void *ret = kmalloc(size, SLUB_NONE);
+#else
+    void *ret = malloc(size);
+#endif // MY_OS
+
     if (!ret) {
-        my_printf("malloc error %d\n", size);
+        my_printf("malloc error\n");
         /* exit(0); */
     }
     bzero(ret, size);
-    /* irq_enable(); */
     return ret;
 }
 
 void my_free(void *o) {
-    /* irq_disable(); */
     if (o) {
+#ifdef MY_OS
         kfree(o);
+#else
+        free(o);
+#endif // MY_OS
     }
-    /* irq_enable(); */
 }
 
 void *my_realloc(void *p, size_t size) {
-    /* irq_disable(); */
-    void *new;
     if (!p) {
-
-        new = my_malloc(size);
-    } else {
-        new = krealloc(p, size, SLUB_NONE);
+        return my_malloc(size);
     }
 
-    /* irq_enable(); */
-    return new;
+#ifdef MY_OS
+    return krealloc(p, size, SLUB_NONE);
+#else
+    return realloc(p, size);
+#endif // MY_OS
 }
 
 void *yyalloc(size_t bytes, void *yyscanner) { return my_malloc(bytes); }
@@ -69,30 +73,10 @@ void *yyrealloc(void *ptr, size_t bytes, void *yyscanner) {
 
 void yyfree(void *ptr, void *yyscanner) { my_free(ptr); }
 
-char *my_strdup(char *s) { return strdup(s); }
+char *my_strdup(const char *s) { return strdup(s); }
 
-void yyerror(YYLTYPE *yylloc, yyscan_t scanner, parse_data *data, const char *s,
-             ...) {
-    va_list ap;
-    va_start(ap, s);
+#ifdef MY_OS
 
-    my_printf("line %d: error: ", yyget_lineno(scanner));
-
-    my_printf(s, ap);
-    my_printf("\n");
-    va_end(ap);
-}
-
-void my_error(const char *msg) { my_printf(msg); }
-bool IS_EOF = false;
-void eof_handle(void) { IS_EOF = true; }
 int errno;
 
-double pow(double x, double y) {
-    double result = 1.0;
-    int i = 0;
-    for (i = 0; i < y; i++) {
-        result *= x;
-    }
-    return result;
-}
+#endif // MY_OS

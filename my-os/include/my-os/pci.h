@@ -47,4 +47,5 @@ struct pci_device {
     struct list_head list;
 };
 
-extern struct list_head pci_devices;
+void pci_bus(void);
+struct pci_device *get_pci_device(u8 class_code, u8 sub_class);
