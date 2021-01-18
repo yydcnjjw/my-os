@@ -110,7 +110,7 @@ void start_kernel(void) {
     schedule_irq_init();
 
     acpi_init();
-    /* ata_init(); */
+    ata_init();
  
     local_apic_init();
 

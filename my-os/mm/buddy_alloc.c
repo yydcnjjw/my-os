@@ -29,8 +29,8 @@ static struct buddy_alloc *buddy_base;
 #define FREE_AREA_PFN (1 << MAX_ORDER)
 #define FREE_AREA_NODE_NUM ((FREE_AREA_PFN << 1) - 1)
 
-#define buddy_node(buddy, i, j)                                                \
-    ((buddy)->free_area + ((i)*FREE_AREA_NODE_NUM + (j)))
+/* #define buddy_node(buddy, i, j)                                                \ */
+/*     ((buddy)->free_area + ((i)*FREE_AREA_NODE_NUM + (j))) */
 
 long buddy_alloc_pfn(struct buddy_alloc *buddy, size_t order);
 

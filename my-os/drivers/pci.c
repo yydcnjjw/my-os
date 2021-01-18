@@ -104,7 +104,7 @@ void pci_check_all_buses(void) {
 }
 
 struct pci_device *get_pci_device(u8 class_code, u8 sub_class) {
-    struct pci_device *pci_device;
+    struct pci_device *pci_device = NULL;
     list_for_each_entry(pci_device, &pci_devices, list) {
         if (pci_device->config.class_code == class_code &&
             pci_device->config.sub_class == sub_class) {
